@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { Play, Pause, SkipBack, Scissors } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
-import { togglePlayback, tickTime, setCurrentTime } from '../../store/slices/timelineSlice';
+import { togglePlayback, tickTime, setCurrentTime, setPlaying } from '../../store/slices/timelineSlice';
 import { splitElement } from '../../store/slices/elementsSlice';
 import { formatTimeShort } from '../../utils/timeFormat';
 

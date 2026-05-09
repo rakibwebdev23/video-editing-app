@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, Download, Video, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { setExportModalOpen } from '../../store/slices/uiSlice';
@@ -141,7 +142,7 @@ export default function ExportModal() {
       await ffmpeg.exec(ffmpegArgs);
 
       const data = await ffmpeg.readFile('output.mp4');
-      const videoBlob = new Blob([data as Uint8Array], { type: 'video/mp4' });
+      const videoBlob = new Blob([data as any], { type: 'video/mp4' });
       const url = URL.createObjectURL(videoBlob);
       
       setExportUrl(url);

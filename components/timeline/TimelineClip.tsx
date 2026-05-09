@@ -3,7 +3,7 @@ import { useRef } from 'react';
 import { CanvasElement } from '../../types/element.types';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { selectElement } from '../../store/slices/selectionSlice';
-import { updateElementStartTime, updateElementDuration } from '../../store/slices/elementsSlice';
+import { updateElementStartTime, updateElementDuration, trimElement } from '../../store/slices/elementsSlice';
 
 interface TimelineClipProps {
   element: CanvasElement;
@@ -145,7 +145,7 @@ export default function TimelineClip({ element, zoom }: TimelineClipProps) {
       {element.type === 'audio' && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-around', opacity: 0.2, pointerEvents: 'none' }}>
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} style={{ width: 2, height: `${20 + Math.random() * 60}%`, background: colors.text, borderRadius: 1 }} />
+            <div key={i} style={{ width: 2, height: `${20 + ((i * 13) % 60)}%`, background: colors.text, borderRadius: 1 }} />
           ))}
         </div>
       )}
