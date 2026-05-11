@@ -13,6 +13,7 @@ export const ENTER_ANIMATIONS: AnimationConfig[] = [
   { name: 'zoomIn', label: 'Zoom In', category: 'enter', icon: '⊕', defaultDuration: 0.7 },
   { name: 'rollIn', label: 'Roll In', category: 'enter', icon: '⊙', defaultDuration: 1.0 },
   { name: 'slideIn', label: 'Slide In', category: 'enter', icon: '▷', defaultDuration: 0.6 },
+  { name: 'blurIn', label: 'Blur In', category: 'enter', icon: '◌', defaultDuration: 1.2 },
 ];
 
 export const EMPHASIS_ANIMATIONS: AnimationConfig[] = [
@@ -43,6 +44,7 @@ export const EXIT_ANIMATIONS: AnimationConfig[] = [
   { name: 'slideOut', label: 'Slide Out', category: 'exit', icon: '◁', defaultDuration: 0.6 },
   { name: 'rollOut', label: 'Roll Out', category: 'exit', icon: '⊗', defaultDuration: 1.0 },
   { name: 'hinge', label: 'Hinge', category: 'exit', icon: '⊾', defaultDuration: 2.0 },
+  { name: 'blurOut', label: 'Blur Out', category: 'exit', icon: '◌', defaultDuration: 1.2 },
 ];
 
 export const ALL_ANIMATIONS = [...ENTER_ANIMATIONS, ...EMPHASIS_ANIMATIONS, ...EXIT_ANIMATIONS];

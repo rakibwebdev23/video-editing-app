@@ -1,39 +1,54 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export const saveFileToDB = async (id: string, file: File | Blob): Promise<void> => {
+export const saveFileToDB = async (id: string, file: File | Blob, thumbnail?: Blob): Promise<void> => {
+  const db = await openDB();
   return new Promise((resolve, reject) => {
-    const request = indexedStore();
-    request.onsuccess = (e: any) => {
-      const db = e.target.result;
+    try {
       const transaction = db.transaction(['media'], 'readwrite');
       const store = transaction.objectStore('media');
-      store.put({ id, file });
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject();
-    };
+      const request = store.put({ id, file, thumbnail });
+      
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+      transaction.onerror = () => reject(transaction.error);
+    } catch (err) {
+      reject(err);
+    }
   });
 };
 
-export const getFileFromDB = async (id: string): Promise<Blob | null> => {
+export const getFileFromDB = async (id: string): Promise<{ file: Blob; thumbnail?: Blob } | null> => {
+  const db = await openDB();
   return new Promise((resolve) => {
-    const request = indexedStore();
-    request.onsuccess = (e: any) => {
-      const db = e.target.result;
+    try {
       const transaction = db.transaction(['media'], 'readonly');
       const store = transaction.objectStore('media');
       const getReq = store.get(id);
-      getReq.onsuccess = () => resolve(getReq.result?.file || null);
+      
+      getReq.onsuccess = () => {
+        if (!getReq.result) return resolve(null);
+        resolve({
+          file: getReq.result.file,
+          thumbnail: getReq.result.thumbnail
+        });
+      };
       getReq.onerror = () => resolve(null);
-    };
+    } catch (err) {
+      console.error('IndexedDB get error:', err);
+      resolve(null);
+    }
   });
 };
 
-const indexedStore = () => {
-  const request = indexedDB.open('VideoCreatorDB', 1);
-  request.onupgradeneeded = (e: any) => {
-    const db = e.target.result;
-    if (!db.objectStoreNames.contains('media')) {
-      db.createObjectStore('media', { keyPath: 'id' });
-    }
-  };
-  return request;
+const openDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('VideoCreatorDB', 1);
+    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains('media')) {
+        db.createObjectStore('media', { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = (event: Event) => resolve((event.target as IDBOpenDBRequest).result);
+    request.onerror = (event: Event) => reject((event.target as IDBOpenDBRequest).error);
+  });
 };

@@ -30,16 +30,17 @@ export default function ResourcePanel() {
   });
 
   useEffect(() => {
-    // Simulate load then stagger
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      if (gridRef.current) {
-        const cards = gridRef.current.querySelectorAll('.media-card');
-        if (cards.length > 0) staggerMediaCards(cards);
-      }
-    }, 400);
+    // Stagger animation whenever filter, search or resources change
+    if (gridRef.current) {
+      const cards = gridRef.current.querySelectorAll('.media-card');
+      if (cards.length > 0) staggerMediaCards(cards);
+    }
+  }, [mediaFilter, mediaSearch, resources.length]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 300);
     return () => clearTimeout(timer);
-  }, [mediaFilter, mediaSearch]);
+  }, []);
 
   if (sidebarTab === 'elements') {
     return <ElementsPanel />;
@@ -56,48 +57,50 @@ export default function ResourcePanel() {
 
   return (
     <div style={{
-      width: 242,
+      width: 280, // Increased width for better visibility
       background: 'var(--bg-panel)',
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'hidden',
+      height: '100%',
+      borderRight: '1px solid var(--border-color)',
     }}>
       {/* Header */}
-      <div style={{ padding: '12px 12px 8px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>My Resource</h2>
+      <div style={{ padding: '16px 16px 8px', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>My Resources</h2>
           <UploadButton />
         </div>
 
         {/* Search */}
-        <div style={{ position: 'relative', marginBottom: 8 }}>
-          <Search size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div style={{ position: 'relative', marginBottom: 12 }}>
+          <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             className="input-field"
-            placeholder="Search Device"
+            placeholder="Search assets..."
             value={mediaSearch}
             onChange={e => dispatch(setMediaSearch(e.target.value))}
-            style={{ paddingLeft: 26 }}
+            style={{ paddingLeft: 32, height: 36, fontSize: 13 }}
           />
         </div>
 
         {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 2, background: 'var(--bg-secondary)', padding: 2, borderRadius: 8 }}>
           {FILTER_TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => dispatch(setMediaFilter(tab.id))}
               style={{
                 flex: 1,
-                padding: '4px 0',
+                padding: '6px 0',
                 border: 'none',
-                background: 'transparent',
+                borderRadius: 6,
+                background: mediaFilter === tab.id ? 'var(--bg-panel)' : 'transparent',
                 fontSize: 11,
-                fontWeight: mediaFilter === tab.id ? 600 : 400,
+                fontWeight: mediaFilter === tab.id ? 600 : 500,
                 color: mediaFilter === tab.id ? 'var(--accent-blue)' : 'var(--text-muted)',
                 cursor: 'pointer',
-                borderBottom: mediaFilter === tab.id ? '2px solid var(--accent-blue)' : '2px solid transparent',
-                transition: 'all 0.15s',
+                boxShadow: mediaFilter === tab.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
               {tab.label}
@@ -106,19 +109,23 @@ export default function ResourcePanel() {
         </div>
       </div>
 
-      {/* Grid */}
-      <div ref={gridRef} style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: 10,
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 8,
-        alignContent: 'start',
-      }}>
+      {/* Grid Container */}
+      <div 
+        ref={gridRef} 
+        className="custom-scrollbar"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: 12,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 12,
+          alignContent: 'start',
+        }}
+      >
         {isLoading
           ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="skeleton" style={{ aspectRatio: '1', borderRadius: 'var(--radius-sm)' }} />
+              <div key={i} className="skeleton" style={{ aspectRatio: '1', borderRadius: 12 }} />
             ))
           : filtered.map((resource, idx) => (
               <MediaCard key={resource.id} resource={resource} pageId={activePageId} index={idx} />
@@ -126,10 +133,12 @@ export default function ResourcePanel() {
         }
         {!isLoading && filtered.length === 0 && (
           <div style={{
-            gridColumn: '1/-1', textAlign: 'center', padding: 24,
+            gridColumn: '1/-1', textAlign: 'center', padding: '40px 20px',
             color: 'var(--text-muted)', fontSize: 12,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
           }}>
-            No media found
+            <Search size={24} opacity={0.2} />
+            <p>No results found</p>
           </div>
         )}
       </div>

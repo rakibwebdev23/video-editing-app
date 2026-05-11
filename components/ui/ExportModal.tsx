@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import React, { useState, useRef } from 'react';
 import { X, Download, Video, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
@@ -6,8 +5,8 @@ import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { setExportModalOpen } from '../../store/slices/uiSlice';
 import { setCurrentTime } from '../../store/slices/timelineSlice';
 import { toJpeg } from 'html-to-image';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { getFFmpeg, muxVideo } from '../../utils/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
 
 export default function ExportModal() {
   const dispatch = useAppDispatch();
@@ -21,27 +20,12 @@ export default function ExportModal() {
   const [errorMessage, setErrorMessage] = useState('');
   const [exportUrl, setExportUrl] = useState<string | null>(null);
 
-  const ffmpegRef = useRef<FFmpeg | null>(null);
-
-  const loadFFmpeg = async () => {
-    if (ffmpegRef.current) return ffmpegRef.current;
-    
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
-    const ffmpeg = new FFmpeg();
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    });
-    ffmpegRef.current = ffmpeg;
-    return ffmpeg;
-  };
-
   const startExport = async () => {
     try {
       setStatus('rendering');
       setProgress(0);
       
-      const ffmpeg = await loadFFmpeg();
+      const ffmpeg = await getFFmpeg();
 
       const fps = 30;
       const totalFrames = Math.ceil(totalDuration * fps);
@@ -57,35 +41,24 @@ export default function ExportModal() {
 
       for (let i = 0; i < totalFrames; i++) {
         const time = i / fps;
-        
-        // Update playhead
         dispatch(setCurrentTime(time));
         
-        // Check if any video elements are active at this time to determine wait duration
         const hasVideo = elements.some(el => 
-          el.type === 'video' && 
-          time >= el.startTime && 
-          time <= (el.startTime + el.duration)
+          el.type === 'video' && time >= el.startTime && time <= (el.startTime + el.duration)
         );
 
-        // Wait for rendering and seeking
-        // Videos need more time to seek (90ms), static elements are faster (40ms)
         await new Promise(resolve => setTimeout(resolve, hasVideo ? 90 : 40));
 
-        // Capture frame with optimized settings
         const dataUrl = await toJpeg(container, {
           quality: 0.85,
           width: 1280,
           height: 720,
-          // Optimization: skip features we don't need
           cacheBust: false,
           includeQueryParams: false,
-          // Fix for SecurityError: ignore external font CSS rules
           skipFonts: true,
           fontEmbedCSS: '',
-          filter: (node: any) => {
-            // Completely ignore Google Fonts and external stylesheets during capture
-            if (node.tagName === 'LINK' && node.href?.includes('fonts.googleapis.com')) return false;
+          filter: (node: HTMLElement) => {
+            if (node.tagName === 'LINK' && (node as HTMLLinkElement).href?.includes('fonts.googleapis.com')) return false;
             if (node.tagName === 'STYLE' && node.innerHTML?.includes('fonts.googleapis.com')) return false;
             return true;
           },
@@ -94,67 +67,27 @@ export default function ExportModal() {
         const frameData = await fetchFile(dataUrl);
         await ffmpeg.writeFile(`frame_${i.toString().padStart(5, '0')}.jpg`, frameData);
         
-        // Update progress more frequently
-        if (i % 5 === 0) {
-          setProgress((i / totalFrames) * 90);
-        }
+        if (i % 5 === 0) setProgress((i / totalFrames) * 80);
       }
 
       // Handle Audio (Muxing)
       const audioElements = elements.filter(el => el.type === 'audio');
-      let hasAudio = false;
+      const mainAudio = audioElements.length > 0 ? audioElements[0].url : undefined;
 
-      if (audioElements.length > 0) {
-        try {
-          // For now, we take the primary background audio (first one)
-          // In a full implementation, we would mix all audio tracks using ffmpeg filters
-          const mainAudio = audioElements[0];
-          const audioData = await fetchFile(mainAudio.url);
-          await ffmpeg.writeFile('input_audio.mp3', audioData);
-          hasAudio = true;
-        } catch (audioErr) {
-          console.warn('Failed to load audio for export:', audioErr);
-        }
-      }
+      // Use the helper for the final mux
+      const url = await muxVideo(fps, totalFrames, mainAudio, (msg) => {
+        console.log('FFmpeg Render Log:', msg);
+      });
 
-      // Run FFmpeg command with faster preset
-      const ffmpegArgs = [
-        '-framerate', `${fps}`,
-        '-i', 'frame_%05d.jpg',
-      ];
-
-      if (hasAudio) {
-        ffmpegArgs.push('-i', 'input_audio.mp3');
-      }
-
-      ffmpegArgs.push(
-        '-c:v', 'libx264',
-        '-preset', 'ultrafast',
-        '-pix_fmt', 'yuv420p'
-      );
-
-      if (hasAudio) {
-        ffmpegArgs.push('-c:a', 'aac', '-shortest');
-      }
-
-      ffmpegArgs.push('output.mp4');
-
-      await ffmpeg.exec(ffmpegArgs);
-
-      const data = await ffmpeg.readFile('output.mp4');
-      const videoBlob = new Blob([data as any], { type: 'video/mp4' });
-      const url = URL.createObjectURL(videoBlob);
-      
       setExportUrl(url);
       setStatus('completed');
       setProgress(100);
-      
-      // Reset outline
       container.style.outline = originalOutline;
 
-    } catch (err: any) {
-      console.error('Export Error:', err);
-      setErrorMessage(err.message || 'An error occurred during export');
+    } catch (err) {
+      const error = err as Error;
+      console.error('Export Error:', error);
+      setErrorMessage(error.message || 'An error occurred during export');
       setStatus('error');
     }
   };

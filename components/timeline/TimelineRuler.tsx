@@ -10,7 +10,7 @@ interface TimelineRulerProps {
 
 export default function TimelineRuler({ zoom, totalDuration, width }: TimelineRulerProps) {
   const totalWidth = totalDuration * zoom;
-  const step = zoom >= 80 ? 30 : zoom >= 40 ? 60 : 120; // seconds between major ticks
+  const step = zoom >= 120 ? 1 : zoom >= 60 ? 5 : zoom >= 30 ? 10 : 30; // seconds between major ticks
   const ticks: number[] = [];
 
   for (let t = 0; t <= totalDuration; t += step) {

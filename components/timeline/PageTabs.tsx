@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { Home, Plus, X, LayoutGrid } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
-import { addPage, deletePage, setActivePage } from '../../store/slices/pagesSlice';
+import { addPage, deletePage, setActivePage, updatePageTransition } from '../../store/slices/pagesSlice';
 import { removePageElements } from '../../store/slices/elementsSlice';
 
 export default function PageTabs() {
@@ -42,7 +43,7 @@ export default function PageTabs() {
       </button>
 
       {/* Page tabs */}
-      {pages.map((page) => (
+      {pages.map((page, idx) => (
         <div
           key={page.id}
           style={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0 }}
@@ -122,6 +123,40 @@ export default function PageTabs() {
             >
               <X size={10} />
             </button>
+          )}
+
+          {/* Transition Button (between pages) */}
+          {idx < pages.length - 1 && (
+            <div style={{ padding: '0 4px', display: 'flex', alignItems: 'center' }}>
+              <select
+                value={page.transition.name}
+                onChange={(e) => dispatch(updatePageTransition({
+                  pageId: page.id,
+                  transition: { name: e.target.value as any, duration: 1.2 }
+                }))}
+                style={{
+                  width: 24, height: 18,
+                  background: page.transition.name !== 'none' ? 'var(--accent-orange)' : 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 4,
+                  fontSize: 10,
+                  color: page.transition.name !== 'none' ? 'white' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  textAlign: 'center',
+                  outline: 'none',
+                }}
+                title={`Transition: ${page.transition.name}`}
+              >
+                <option value="none">-</option>
+                <option value="fade">F</option>
+                <option value="slideLeft">S</option>
+                <option value="zoom">Z</option>
+                <option value="flip">L</option>
+                <option value="rotate">R</option>
+                <option value="wipe">W</option>
+              </select>
+            </div>
           )}
         </div>
       ))}

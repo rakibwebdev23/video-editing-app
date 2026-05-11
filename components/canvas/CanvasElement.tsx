@@ -1,9 +1,11 @@
 'use client';
 import { useRef, useEffect, MouseEvent, CSSProperties } from 'react';
+import gsap from 'gsap';
 import { CanvasElement } from '../../types/element.types';
 import { snapToGrid } from '../../utils/snapGrid';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../../constants/layouts';
 import { useAppSelector } from '../../store/editorStore';
+import { playEnterAnimation, playExitAnimation, playEmphasisAnimation } from '../../animations/gsapAnimations';
 
 interface Props {
   element: CanvasElement;
@@ -17,20 +19,17 @@ function VideoElement({ element, objectFit }: { element: CanvasElement; objectFi
   const videoRef = useRef<HTMLVideoElement>(null);
   const { currentTime, isPlaying } = useAppSelector(s => s.timeline);
   
-  // Calculate the relative time within the video, accounting for trimming offset
   const relativeTime = currentTime - element.startTime + (element.startTimeOffset || 0);
   const isVisible = currentTime >= element.startTime && currentTime <= (element.startTime + element.duration);
 
   useEffect(() => {
     if (!videoRef.current || !isVisible) return;
     
-    // Sync time
     const videoTime = Math.max(0, relativeTime); 
     if (Math.abs(videoRef.current.currentTime - videoTime) > 0.1) {
       videoRef.current.currentTime = videoTime;
     }
 
-    // Sync playback
     if (isPlaying && videoRef.current.paused) {
       videoRef.current.play().catch(() => {});
     } else if (!isPlaying && !videoRef.current.paused) {
@@ -66,13 +65,11 @@ function AudioElement({ element }: { element: CanvasElement }) {
   useEffect(() => {
     if (!audioRef.current || !isVisible) return;
     
-    // Sync time
     const audioTime = Math.max(0, relativeTime);
     if (Math.abs(audioRef.current.currentTime - audioTime) > 0.1) {
       audioRef.current.currentTime = audioTime;
     }
 
-    // Sync playback
     if (isPlaying && audioRef.current.paused) {
       audioRef.current.play().catch(() => {});
     } else if (!isPlaying && !audioRef.current.paused) {
@@ -215,6 +212,66 @@ export default function CanvasElementComponent({
     handle: string; mouseX: number; mouseY: number;
     origX: number; origY: number; origW: number; origH: number;
   } | null>(null);
+  const { currentTime } = useAppSelector(s => s.timeline);
+  const lastAnimatedTime = useRef<number>(-1);
+
+  const isVisible = currentTime >= element.startTime && currentTime <= (element.startTime + element.duration);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {});
+    
+    if (!elRef.current || !isVisible) {
+      if (!isVisible) {
+        lastAnimatedTime.current = -1;
+      }
+      return;
+    }
+
+    const enterAnim = element.animations.find(a => a.category === 'enter');
+    const exitAnim = element.animations.find(a => a.category === 'exit');
+    const emphasisAnim = element.animations.find(a => a.category === 'emphasis');
+
+    const exitStartTime = element.startTime + element.duration - (exitAnim?.duration || 0);
+
+    // Trigger Enter Animation
+    const isAtStart = Math.abs(currentTime - element.startTime) < 0.05;
+    if (isAtStart && enterAnim && lastAnimatedTime.current !== element.startTime) {
+      ctx.add(() => playEnterAnimation(elRef.current!, enterAnim.name, enterAnim.duration));
+      lastAnimatedTime.current = element.startTime;
+      return;
+    }
+
+    // Trigger Exit Animation
+    const isAtEnd = Math.abs(currentTime - exitStartTime) < 0.05;
+    if (isAtEnd && exitAnim && lastAnimatedTime.current !== exitStartTime && currentTime > element.startTime) {
+      ctx.add(() => playExitAnimation(elRef.current!, exitAnim.name, exitAnim.duration));
+      lastAnimatedTime.current = exitStartTime;
+      return;
+    }
+
+    // Trigger Emphasis Animation (Combo)
+    if (emphasisAnim && lastAnimatedTime.current === -1) {
+       ctx.add(() => {
+         const tl = playEmphasisAnimation(elRef.current!, emphasisAnim.name, emphasisAnim.duration);
+         tl.repeat(-1);
+       });
+       lastAnimatedTime.current = -2;
+    }
+
+    // Reset / Scrub logic
+    const isDuringEnter = currentTime >= element.startTime && currentTime < element.startTime + (enterAnim?.duration || 0);
+    const isDuringExit = currentTime > exitStartTime && currentTime <= element.startTime + element.duration;
+
+    if (!isAtStart && !isAtEnd && !isDuringEnter && !isDuringExit && lastAnimatedTime.current !== -2) {
+      // If we are in the middle and no combo animation is active, ensure properties are clean
+      if (!emphasisAnim) {
+         gsap.set(elRef.current, { clearProps: 'all' });
+         lastAnimatedTime.current = -1;
+      }
+    }
+
+    return () => ctx.revert(); // Cleanup GSAP animations
+  }, [currentTime, isVisible, element.startTime, element.duration, element.animations]);
 
   const handleMouseDown = (e: MouseEvent) => {
     e.stopPropagation();
@@ -251,10 +308,10 @@ export default function CanvasElementComponent({
         const dx = e.clientX - mouseX;
         const dy = e.clientY - mouseY;
         let newX = origX, newY = origY, newW = origW, newH = origH;
-        if (handle.includes('e')) newW = Math.max(80, snapToGrid(origW + dx));
-        if (handle.includes('s')) newH = Math.max(60, snapToGrid(origH + dy));
-        if (handle.includes('w')) { newW = Math.max(80, snapToGrid(origW - dx)); newX = origX + origW - newW; }
-        if (handle.includes('n')) { newH = Math.max(60, snapToGrid(origH - dy)); newY = origY + origH - newH; }
+        if (handle.includes('e')) newW = Math.max(20, snapToGrid(origW + dx));
+        if (handle.includes('s')) newH = Math.max(20, snapToGrid(origH + dy));
+        if (handle.includes('w')) { newW = Math.max(20, snapToGrid(origW - dx)); newX = origX + origW - newW; }
+        if (handle.includes('n')) { newH = Math.max(20, snapToGrid(origH - dy)); newY = origY + origH - newH; }
         onPositionChange(newX, newY);
         onSizeChange(newW, newH);
       }
@@ -272,20 +329,23 @@ export default function CanvasElementComponent({
   }, [element.x, element.y, element.width, element.height, onPositionChange, onSizeChange]);
 
   const getHandleStyle = (handle: string): CSSProperties => {
+    const size = 12;
+    const offset = -6; 
     const base: CSSProperties = {
-      position: 'absolute', width: 8, height: 8,
+      position: 'absolute', width: size, height: size,
       background: 'white', border: '2px solid #3b82f6',
-      borderRadius: '50%', zIndex: 10,
+      borderRadius: '50%', zIndex: 100,
+      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
     };
     const pos: Record<string, CSSProperties> = {
-      nw: { top: -4, left: -4, cursor: 'nw-resize' },
-      n: { top: -4, left: '50%', transform: 'translateX(-50%)', cursor: 'n-resize' },
-      ne: { top: -4, right: -4, cursor: 'ne-resize' },
-      e: { top: '50%', right: -4, transform: 'translateY(-50%)', cursor: 'e-resize' },
-      se: { bottom: -4, right: -4, cursor: 'se-resize' },
-      s: { bottom: -4, left: '50%', transform: 'translateX(-50%)', cursor: 's-resize' },
-      sw: { bottom: -4, left: -4, cursor: 'sw-resize' },
-      w: { top: '50%', left: -4, transform: 'translateY(-50%)', cursor: 'w-resize' },
+      nw: { top: offset, left: offset, cursor: 'nw-resize' },
+      n: { top: offset, left: '50%', transform: 'translateX(-50%)', cursor: 'n-resize' },
+      ne: { top: offset, right: offset, cursor: 'ne-resize' },
+      e: { top: '50%', right: offset, transform: 'translateY(-50%)', cursor: 'e-resize' },
+      se: { bottom: offset, right: offset, cursor: 'se-resize' },
+      s: { bottom: offset, left: '50%', transform: 'translateX(-50%)', cursor: 's-resize' },
+      sw: { bottom: offset, left: offset, cursor: 'sw-resize' },
+      w: { top: '50%', left: offset, transform: 'translateY(-50%)', cursor: 'w-resize' },
     };
     return { ...base, ...pos[handle] };
   };
@@ -295,14 +355,15 @@ export default function CanvasElementComponent({
     : element.fillMode === 'stretch' ? 'fill'
     : 'none';
 
-  if (element.type === 'audio') {
-    return <AudioElement element={element} />;
-  }
+  if (element.type === 'audio') return <AudioElement element={element} />;
+  if (!isVisible) return null;
 
   return (
     <div
       ref={elRef}
       onMouseDown={handleMouseDown}
+      className="canvas-element-hover"
+      data-element-id={element.id}
       style={{
         position: 'absolute',
         left: element.x,
@@ -311,47 +372,56 @@ export default function CanvasElementComponent({
         height: element.height,
         cursor: element.freePosition ? 'move' : 'default',
         outline: isSelected ? '2px solid #3b82f6' : 'none',
-        outlineOffset: 0,
+        outlineOffset: isSelected ? 2 : 0,
         userSelect: 'none',
-        zIndex: element.zIndex,
+        zIndex: isSelected ? 1000 : element.zIndex,
         opacity: element.opacity,
-        overflow: 'hidden',
       }}
     >
-      {element.type === 'shape' ? (
-        <ShapeContent element={element} />
-      ) : element.type === 'video' ? (
-        <VideoElement
-          element={element}
-          objectFit={objectFit}
-        />
-      ) : element.url && element.url !== '#' ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={element.url}
-          alt={element.name}
-          draggable={false}
-          style={{
+      <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
+        {element.type === 'shape' ? (
+          <ShapeContent element={element} />
+        ) : element.type === 'video' ? (
+          <VideoElement element={element} objectFit={objectFit} />
+        ) : element.url && element.url !== '#' ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={element.url}
+            alt={element.name}
+            draggable={false}
+            style={{
+              width: '100%', height: '100%',
+              objectFit: objectFit as CSSProperties['objectFit'],
+              display: 'block',
+              pointerEvents: 'none',
+            }}
+          />
+        ) : (
+          <div style={{
             width: '100%', height: '100%',
-            objectFit: objectFit as CSSProperties['objectFit'],
-            display: 'block',
-            pointerEvents: 'none',
-          }}
-        />
-      ) : (
-        <div style={{
-          width: '100%', height: '100%',
-          background: 'linear-gradient(135deg, #1e2535, #2a3347)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{element.name}</p>
-        </div>
+            background: 'linear-gradient(135deg, #1e2535, #2a3347)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <p style={{ fontSize: 11, color: 'white' }}>{element.name}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Edge resize bars */}
+      {isSelected && (
+        <>
+          <div className="edge-handle edge-n" onMouseDown={e => handleResizeMouseDown(e, 'n')} />
+          <div className="edge-handle edge-s" onMouseDown={e => handleResizeMouseDown(e, 's')} />
+          <div className="edge-handle edge-e" onMouseDown={e => handleResizeMouseDown(e, 'e')} />
+          <div className="edge-handle edge-w" onMouseDown={e => handleResizeMouseDown(e, 'w')} />
+        </>
       )}
 
       {/* Resize handles */}
       {isSelected && HANDLES.map(handle => (
         <div
           key={handle}
+          className="resize-handle"
           style={getHandleStyle(handle)}
           onMouseDown={e => handleResizeMouseDown(e, handle)}
         />

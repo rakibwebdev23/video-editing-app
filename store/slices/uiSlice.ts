@@ -42,7 +42,14 @@ const uiSlice = createSlice({
       state.mediaSearch = action.payload;
     },
     addResource(state, action: PayloadAction<MediaResource>) {
-      state.resources.unshift(action.payload);
+      const exists = state.resources.some(r => r.id === action.payload.id);
+      if (!exists) {
+        state.resources.unshift(action.payload);
+      } else {
+        // Update existing resource (e.g. refresh blob URL)
+        const idx = state.resources.findIndex(r => r.id === action.payload.id);
+        state.resources[idx] = action.payload;
+      }
     },
     removeResource(state, action: PayloadAction<string>) {
       state.resources = state.resources.filter(r => r.id !== action.payload);

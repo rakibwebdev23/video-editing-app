@@ -10,7 +10,7 @@ interface LayoutRendererProps {
   onDrop?: (zone: number, e: React.DragEvent) => void;
 }
 
-function getZones(layout: LayoutType, w: number, h: number): { x: number; y: number; width: number; height: number }[] {
+export function getZones(layout: LayoutType, w: number, h: number): { x: number; y: number; width: number; height: number }[] {
   switch (layout) {
     case 'single':
       return [{ x: 0, y: 0, width: w, height: h }];
@@ -70,7 +70,23 @@ export default function LayoutRenderer({ layout, canvasWidth, canvasHeight, chil
             onDrop?.(idx, e);
           }}
         >
-          {children?.(idx, zone)}
+          {children ? (
+            children(idx, zone)
+          ) : (
+            <div style={{
+              width: '100%', height: '100%',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              color: 'rgba(59,130,246,0.3)',
+              gap: 8,
+              pointerEvents: 'none',
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 15h18" /><circle cx="8" cy="9" r="2" />
+              </svg>
+              <span style={{ fontSize: 10, fontWeight: 500, textTransform: 'uppercase' }}>Zone {idx + 1}</span>
+            </div>
+          )}
         </div>
       ))}
     </>

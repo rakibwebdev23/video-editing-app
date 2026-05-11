@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { setTotalDuration } from '../../store/slices/timelineSlice';
+import { setActivePage } from '../../store/slices/pagesSlice';
 import PageTabs from './PageTabs';
 import PlaybackControls from './PlaybackControls';
 import TimelineRuler from './TimelineRuler';
@@ -10,24 +11,41 @@ import { DEFAULTS } from '../../constants/defaults';
 
 export default function Timeline() {
   const dispatch = useAppDispatch();
-  const { totalDuration } = useAppSelector(s => s.timeline);
-  const zoom = DEFAULTS.TIMELINE_PX_PER_SEC;
-  const activePageId = useAppSelector(s => s.pages.activePageId);
+  const { totalDuration, currentTime, zoom } = useAppSelector(s => s.timeline);
+  const { pages, activePageId } = useAppSelector(s => s.pages);
   const allElements = useAppSelector(s => s.elements.elements);
   const pageElements = allElements.filter(el => el.pageId === activePageId);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-sync project duration to the end of the last clip
+  // Auto-sync project duration to the total duration of all pages
   useEffect(() => {
-    const maxEndTime = allElements.reduce((max, el) => {
+    const totalPagesDuration = pages.reduce((sum, p) => sum + p.duration, 0);
+    const maxClipEndTime = allElements.reduce((max, el) => {
       const endTime = el.startTime + el.duration;
       return endTime > max ? endTime : max;
-    }, 10); // Default minimum 10s
+    }, 0);
+    
+    const finalDuration = Math.max(totalPagesDuration, maxClipEndTime, 10);
 
-    if (Math.abs(totalDuration - maxEndTime) > 0.1) {
-      dispatch(setTotalDuration(maxEndTime));
+    if (Math.abs(totalDuration - finalDuration) > 0.1) {
+      dispatch(setTotalDuration(finalDuration));
     }
-  }, [allElements, totalDuration, dispatch]);
+  }, [allElements, pages, totalDuration, dispatch]);
+
+  // Auto-switch pages based on currentTime
+  useEffect(() => {
+    let cumulativeTime = 0;
+    for (const page of pages) {
+      const pageEnd = cumulativeTime + page.duration;
+      if (currentTime >= cumulativeTime && currentTime < pageEnd) {
+        if (activePageId !== page.id) {
+          dispatch(setActivePage(page.id));
+        }
+        break;
+      }
+      cumulativeTime = pageEnd;
+    }
+  }, [currentTime, pages, activePageId, dispatch]);
 
   const RULER_OFFSET = 48; // track label width
 
@@ -75,7 +93,7 @@ export default function Timeline() {
         </div>
 
         {/* Tracks */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
           <TimelineTrack
             trackType="video"
             elements={pageElements}
@@ -88,6 +106,32 @@ export default function Timeline() {
             zoom={zoom}
             totalDuration={totalDuration}
           />
+
+          {/* Global Playhead Line (Relative to current page view) */}
+          {(() => {
+            let pageStartTime = 0;
+            for (const p of pages) {
+              if (p.id === activePageId) break;
+              pageStartTime += p.duration;
+            }
+            const relativeTime = currentTime - pageStartTime;
+            // Only show playhead if it's within the current page's time range
+            if (relativeTime >= 0 && relativeTime <= (pages.find(p => p.id === activePageId)?.duration || 0)) {
+              return (
+                <div style={{
+                  position: 'absolute',
+                  top: 0, bottom: 0,
+                  left: RULER_OFFSET + (relativeTime * zoom),
+                  width: 2,
+                  background: 'var(--accent-blue)',
+                  zIndex: 100,
+                  pointerEvents: 'none',
+                  boxShadow: '0 0 8px rgba(59,130,246,0.6)',
+                }} />
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
     </div>

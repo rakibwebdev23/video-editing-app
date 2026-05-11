@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft, ZoomIn, ZoomOut, Undo2, Redo2, Moon, Sun, Upload
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { setCanvasZoom, setExportModalOpen } from '../../store/slices/uiSlice';
 import { undo, redo } from '../../store/slices/historySlice';
@@ -12,8 +13,20 @@ export default function TopNavbar() {
   const canvasZoom = useAppSelector(s => s.ui.canvasZoom);
   const canUndo = useAppSelector(s => s.history.canUndo);
   const canRedo = useAppSelector(s => s.history.canRedo);
-  const [darkMode, setDarkMode] = useState(true);
+  const { theme, setTheme } = useTheme();
   const [templateName] = useState('Template 2025-08-29');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Using requestAnimationFrame makes the update asynchronous,
+    // which avoids the "cascading renders" performance warning.
+    const frame = requestAnimationFrame(() => {
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+
 
   const zoomPct = isNaN(canvasZoom) ? 100 : Math.round(canvasZoom * 100);
 
@@ -96,11 +109,13 @@ export default function TopNavbar() {
 
         <button
           className="btn-icon"
-          onClick={() => setDarkMode(!darkMode)}
-          title="Toggle Dark Mode"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          title="Toggle Theme"
         >
-          {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+          {mounted && (theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />)}
         </button>
+
+
 
         <button className="btn-primary" style={{ marginLeft: 4 }}>
           <Upload size={14} />

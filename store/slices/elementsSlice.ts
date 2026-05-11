@@ -72,6 +72,15 @@ const elementsSlice = createSlice({
         if (anim) anim.duration = action.payload.duration;
       }
     },
+    setElementAnimation(state, action: PayloadAction<{ elementId: string; animation: ElementAnimation }>) {
+      const el = state.elements.find(e => e.id === action.payload.elementId);
+      if (el) {
+        // Remove existing animation of the same category
+        el.animations = el.animations.filter(a => a.category !== action.payload.animation.category);
+        // Add new one
+        el.animations.push(action.payload.animation);
+      }
+    },
     updateElementOpacity(state, action: PayloadAction<{ id: string; opacity: number }>) {
       const el = state.elements.find(e => e.id === action.payload.id);
       if (el) el.opacity = action.payload.opacity;
@@ -146,6 +155,18 @@ const elementsSlice = createSlice({
       };
       state.elements.push(newElement);
     },
+    reassignZones(state, action: PayloadAction<{ pageId: string; zonesCount: number }>) {
+      const pageEls = state.elements.filter(e => e.pageId === action.payload.pageId && (e.type === 'image' || e.type === 'video'));
+      pageEls.forEach((el, idx) => {
+        if (idx < action.payload.zonesCount) {
+          el.zone = idx;
+          el.freePosition = false;
+        } else {
+          el.zone = null;
+          el.freePosition = true;
+        }
+      });
+    },
   },
 });
 
@@ -158,6 +179,7 @@ export const {
   updateElementOpacity, bringToFront, sendToBack, removePageElements,
   updateElementVolume, updateElementFadeIn, updateElementFadeOut,
   updateElementStartTime, updateElementContent, splitElement, trimElement,
+  setElementAnimation, reassignZones,
 } = elementsSlice.actions;
 
 export default elementsSlice.reducer;

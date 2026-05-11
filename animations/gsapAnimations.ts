@@ -1,6 +1,6 @@
 'use client';
 import gsap from 'gsap';
-import { AnimationName } from '../types/editor.types';
+import { AnimationName, TransitionName } from '../types/editor.types';
 
 export function playEnterAnimation(element: HTMLElement, name: AnimationName, duration: number = 1): gsap.core.Tween | gsap.core.Timeline {
   gsap.set(element, { clearProps: 'all' });
@@ -30,6 +30,8 @@ export function playEnterAnimation(element: HTMLElement, name: AnimationName, du
       return gsap.from(element, { x: -200, rotation: -120, opacity: 0, duration, ease: 'power2.out' });
     case 'slideIn':
       return gsap.from(element, { x: -60, opacity: 0, duration, ease: 'power3.out' });
+    case 'blurIn':
+      return gsap.from(element, { filter: 'blur(20px)', opacity: 0, duration, ease: 'power2.out' });
     default:
       return gsap.from(element, { opacity: 0, duration });
   }
@@ -136,6 +138,8 @@ export function playExitAnimation(element: HTMLElement, name: AnimationName, dur
       return gsap.to(element, { x: 60, opacity: 0, duration, ease: 'power3.in' });
     case 'rollOut':
       return gsap.to(element, { x: 200, rotation: 120, opacity: 0, duration, ease: 'power2.in' });
+    case 'blurOut':
+      return gsap.to(element, { filter: 'blur(20px)', opacity: 0, duration, ease: 'power2.in' });
     case 'hinge': {
       const tl = gsap.timeline();
       tl.to(element, { rotation: 80, transformOrigin: 'top left', duration: 0.3, ease: 'power1.inOut' })
@@ -164,4 +168,38 @@ export function staggerMediaCards(elements: NodeListOf<Element> | HTMLElement[])
     stagger: 0.05,
     ease: 'power2.out',
   });
+}
+
+export function playTransitionAnimation(container: HTMLElement, name: TransitionName, duration: number = 1) {
+  gsap.set(container, { clearProps: 'all' });
+  
+  switch (name) {
+    case 'fade':
+      return gsap.fromTo(container, { opacity: 0 }, { opacity: 1, duration, ease: 'power2.inOut' });
+    case 'fadeBlack': {
+      const tl = gsap.timeline();
+      tl.fromTo(container, { opacity: 0 }, { opacity: 1, duration, ease: 'power2.inOut' });
+      return tl;
+    }
+    case 'slideLeft':
+      return gsap.fromTo(container, { x: 800, opacity: 0 }, { x: 0, opacity: 1, duration, ease: 'power3.out' });
+    case 'slideRight':
+      return gsap.fromTo(container, { x: -800, opacity: 0 }, { x: 0, opacity: 1, duration, ease: 'power3.out' });
+    case 'slideUp':
+      return gsap.fromTo(container, { y: 600, opacity: 0 }, { y: 0, opacity: 1, duration, ease: 'power3.out' });
+    case 'slideDown':
+      return gsap.fromTo(container, { y: -600, opacity: 0 }, { y: 0, opacity: 1, duration, ease: 'power3.out' });
+    case 'zoom':
+      return gsap.fromTo(container, { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration, ease: 'back.out(1.2)' });
+    case 'flip':
+      return gsap.fromTo(container, { rotationY: 90, opacity: 0 }, { rotationY: 0, opacity: 1, duration, ease: 'power2.out' });
+    case 'rotate':
+      return gsap.fromTo(container, { rotation: -180, scale: 0.5, opacity: 0 }, { rotation: 0, scale: 1, opacity: 1, duration, ease: 'power2.out' });
+    case 'wipe':
+      return gsap.fromTo(container, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration, ease: 'power1.inOut' });
+    case 'blur':
+      return gsap.fromTo(container, { filter: 'blur(20px)', opacity: 0 }, { filter: 'blur(0px)', opacity: 1, duration, ease: 'power2.out' });
+    default:
+      return gsap.fromTo(container, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power1.out' });
+  }
 }

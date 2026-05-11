@@ -5,10 +5,13 @@ import { useAppDispatch } from '../../store/editorStore';
 import { addResource } from '../../store/slices/uiSlice';
 import { MediaResource } from '../../types/editor.types';
 import { saveFileToDB } from '../../utils/mediaDb';
+import { generateVideoThumbnail } from '../../utils/ffmpeg';
+import { useState } from 'react';
 
 export default function UploadButton() {
   const dispatch = useAppDispatch();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const getMediaDuration = (file: File): Promise<number> => {
     return new Promise((resolve) => {
@@ -36,45 +39,72 @@ export default function UploadButton() {
   };
 
   const handleFiles = async (files: FileList) => {
-    console.log("Handling files:", files.length);
+    if (isProcessing) return;
+    setIsProcessing(true);
+    
     try {
       for (const file of Array.from(files)) {
-        console.log("Processing file:", file.name, file.type);
         const url = URL.createObjectURL(file);
         const isVideo = file.type.startsWith('video');
         const isAudio = file.type.startsWith('audio');
         const isImage = file.type.startsWith('image');
-        
         const type: MediaResource['type'] = isImage ? 'image' : isVideo ? 'video' : 'audio';
         
-        let duration = 0;
-        if (isVideo || isAudio) {
-          duration = await getMediaDuration(file);
-        }
-
+        // Initial resource object (with placeholder thumbnail)
+        const resourceId = `upload-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const resource: MediaResource = {
-          id: `upload-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          name: file.name.length > 20 ? file.name.slice(0, 18) + '...' : file.name,
+          id: resourceId,
+          name: file.name.length > 24 ? file.name.slice(0, 22) + '...' : file.name,
           type,
           url,
           thumbnail: isImage ? url : undefined,
           size: file.size,
-          duration: duration > 0 ? duration : undefined,
         };
-        
-        // Save to permanent DB for persistence across reloads
-        await saveFileToDB(resource.id, file);
-        
-        console.log("Adding resource:", resource);
+
+        // Add to state immediately so user sees it in the sidebar
         dispatch(addResource(resource));
-        console.log("Resource dispatched successfully");
+
+        // Background processing for metadata and thumbnails
+        (async () => {
+          try {
+            let duration = 0;
+            let thumbnail = resource.thumbnail;
+
+            if (isVideo || isAudio) {
+              duration = await getMediaDuration(file);
+            }
+
+            if (isVideo) {
+              try {
+                const generatedThumb = await generateVideoThumbnail(url);
+                if (generatedThumb) thumbnail = generatedThumb;
+              } catch (e) {
+                console.warn("Background thumbnail generation failed:", e);
+              }
+            }
+
+            // Update resource in state and DB once processing is done
+            const updatedResource = { ...resource, duration: duration > 0 ? duration : undefined, thumbnail };
+            
+            let thumbBlob: Blob | undefined;
+            if (thumbnail && thumbnail.startsWith('blob:')) {
+              thumbBlob = await fetch(thumbnail).then(r => r.blob()).catch(() => undefined);
+            }
+            
+            await saveFileToDB(resourceId, file, thumbBlob);
+            dispatch(addResource(updatedResource)); // addResource is idempotent, it will update existing
+          } catch (processErr) {
+            console.error("Background file processing error:", processErr);
+            // Still save the basic file so it's not lost
+            await saveFileToDB(resourceId, file).catch(() => {});
+          }
+        })();
       }
     } catch (err) {
-      console.error("Upload process error:", err);
+      console.error("Upload handler error:", err);
     } finally {
-      if (inputRef.current) {
-        inputRef.current.value = '';
-      }
+      setIsProcessing(false);
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -106,7 +136,7 @@ export default function UploadButton() {
         onClick={() => console.log("Upload label/button clicked")}
       >
         <CloudUpload size={14} />
-        Upload
+        {isProcessing ? 'Processing...' : 'Upload'}
       </label>
     </div>
   );

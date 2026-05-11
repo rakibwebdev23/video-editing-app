@@ -35,7 +35,7 @@ export default function TimelineTrack({ trackType, elements, zoom, totalDuration
     );
     if (eligible.length === 0) return;
     const resource = eligible[0];
-    const elementId = `el-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const elementId = `el-${crypto.randomUUID()}`;
     // Place after last clip
     const startTime = trackElements.reduce((max, el) => Math.max(max, el.startTime + el.duration), 0);
     dispatch(addElement({

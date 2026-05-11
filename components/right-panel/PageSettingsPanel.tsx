@@ -14,6 +14,7 @@ import { TransitionName } from '../../types/editor.types';
 const TRANSITION_OPTIONS: { value: TransitionName; label: string }[] = [
   { value: 'none', label: 'None' },
   { value: 'fade', label: 'Fade' },
+  { value: 'fadeBlack', label: 'Fade through black' },
   { value: 'slideLeft', label: 'Slide left' },
   { value: 'slideRight', label: 'Slide right' },
   { value: 'slideUp', label: 'Slide up' },
@@ -22,6 +23,7 @@ const TRANSITION_OPTIONS: { value: TransitionName; label: string }[] = [
   { value: 'flip', label: 'Flip' },
   { value: 'rotate', label: 'Rotate' },
   { value: 'wipe', label: 'Wipe' },
+  { value: 'blur', label: 'Blur' },
 ];
 
 export default function PageSettingsPanel({ pageId }: { pageId: string }) {

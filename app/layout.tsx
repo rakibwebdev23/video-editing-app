@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import ThemeProvider from "@/components/providers/ThemeProvider";
 import ReduxProvider from "@/components/providers/ReduxProvider";
 import StateSyncProvider from "@/components/providers/StateSyncProvider";
+
 
 export const metadata: Metadata = {
   title: "Video Creator — Professional Video Editor",
@@ -21,12 +23,15 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body style={{ margin: 0, padding: 0, overflow: 'hidden' }} suppressHydrationWarning>
-        <ReduxProvider>
-          <StateSyncProvider>
-            {children}
-          </StateSyncProvider>
-        </ReduxProvider>
+        <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem>
+          <ReduxProvider>
+            <StateSyncProvider>
+              {children}
+            </StateSyncProvider>
+          </ReduxProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+

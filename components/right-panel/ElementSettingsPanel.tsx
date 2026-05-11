@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { Trash2, Lock, Unlock, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, Move, Volume2, Scissors, Plus } from 'lucide-react';
+import gsap from 'gsap';
+import { Trash2, Lock, Unlock, ArrowUp, ArrowRight, ArrowDown, ArrowLeft, Move, Volume2, Scissors } from 'lucide-react';
 import { ElementType } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import {
@@ -11,10 +12,14 @@ import {
 } from '../../store/slices/elementsSlice';
 import { removeElementFromPage } from '../../store/slices/pagesSlice';
 import { clearSelection } from '../../store/slices/selectionSlice';
-import { FillMode } from '../../types/editor.types';
+import { FillMode, AnimationCategory, AnimationName } from '../../types/editor.types';
+import { ENTER_ANIMATIONS, EMPHASIS_ANIMATIONS, EXIT_ANIMATIONS, ALL_ANIMATIONS } from '../../constants/animations';
+import { setElementAnimation, removeElementAnimation, updateElementAnimationDuration } from '../../store/slices/elementsSlice';
 import Toggle from '../ui/Toggle';
 import Dropdown from '../ui/Dropdown';
 import NumberInput from '../ui/NumberInput';
+import TabGroup from '../ui/TabGroup';
+import { playEnterAnimation, playEmphasisAnimation, playExitAnimation } from '../../animations/gsapAnimations';
 
 const FILL_OPTIONS: { value: FillMode; label: string }[] = [
   { value: 'fill', label: 'Fill' },
@@ -29,11 +34,25 @@ export default function ElementSettingsPanel({ elementId }: { elementId: string 
   const activePageId = useAppSelector(s => s.pages.activePageId);
   const currentTime = useAppSelector(s => s.timeline.currentTime);
   const [aspectLocked, setAspectLocked] = useState(false);
+  const [activeAnimTab, setActiveAnimTab] = useState<AnimationCategory>('enter');
 
   if (!element) return null;
 
   const handleSplitAtPlayhead = () => {
     dispatch(splitElement({ id: elementId, splitTime: currentTime }));
+  };
+
+  const handlePreview = (name: AnimationName, category: AnimationCategory, duration: number) => {
+    const el = document.querySelector(`[data-element-id="${elementId}"]`) as HTMLElement;
+    if (!el) return;
+    
+    // Clear previous animations
+    gsap.killTweensOf(el);
+    gsap.set(el, { clearProps: 'all' });
+
+    if (category === 'enter') playEnterAnimation(el, name, duration);
+    else if (category === 'exit') playExitAnimation(el, name, duration);
+    else playEmphasisAnimation(el, name, duration);
   };
 
   const handleDelete = () => {
@@ -331,37 +350,115 @@ export default function ElementSettingsPanel({ elementId }: { elementId: string 
       {/* Animations */}
       {!isAudio && (
         <div className="panel-section">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <p className="label-sm">Animations</p>
-            <button
-              className="btn-icon"
-              style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--accent-blue)', color: 'white' }}
-            >
-              <Plus size={12} />
-            </button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          
+          <TabGroup
+            tabs={[
+              { id: 'enter', label: 'In' },
+              { id: 'exit', label: 'Out' },
+              { id: 'emphasis', label: 'Combo' },
+            ]}
+            activeTab={activeAnimTab}
+            onTabChange={id => setActiveAnimTab(id as AnimationCategory)}
+          />
+
+          <div style={{ marginTop: 12 }}>
+            {/* Current category selection */}
             <div style={{ 
-              padding: '12px', 
-              background: 'var(--bg-secondary)', 
-              borderRadius: 8, 
-              border: '1px solid var(--border-subtle)',
-              textAlign: 'center',
-              fontSize: 11,
-              color: 'var(--text-muted)'
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(3, 1fr)', 
+              gap: 8, 
+              maxHeight: 200, 
+              overflowY: 'auto',
+              padding: '4px'
             }}>
-              Select an entry animation to make this element pop!
+              {(activeAnimTab === 'enter' ? ENTER_ANIMATIONS : 
+                activeAnimTab === 'exit' ? EXIT_ANIMATIONS : 
+                EMPHASIS_ANIMATIONS).map(anim => {
+                  const isApplied = element.animations.some(a => a.category === activeAnimTab && a.name === anim.name);
+                  return (
+                    <button
+                      key={anim.name}
+                      onClick={() => {
+                        dispatch(setElementAnimation({
+                          elementId: element.id,
+                          animation: {
+                            id: `anim-${Date.now()}`,
+                            name: anim.name as AnimationName,
+                            category: activeAnimTab,
+                            duration: anim.defaultDuration
+                          }
+                        }));
+                        handlePreview(anim.name as AnimationName, activeAnimTab, anim.defaultDuration);
+                      }}
+                      className={isApplied ? 'btn-primary' : 'btn-ghost'}
+                      style={{ 
+                        flexDirection: 'column', 
+                        height: 'auto', 
+                        padding: '8px 4px', 
+                        gap: 4,
+                        border: isApplied ? 'none' : '1px solid var(--border-color)',
+                        background: isApplied ? 'var(--accent-blue)' : 'var(--bg-secondary)',
+                        fontSize: 10,
+                        borderRadius: 6
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>{anim.icon}</span>
+                      <span style={{ 
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis', 
+                        whiteSpace: 'nowrap',
+                        width: '100%'
+                      }}>
+                        {anim.label}
+                      </span>
+                    </button>
+                  );
+                })}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginTop: 8 }}>
-              {['Fade In', 'Pop In', 'Slide Up', 'Zoom In'].map(anim => (
-                <button
-                  key={anim}
-                  className="btn-ghost"
-                  style={{ border: '1px solid var(--border-color)', fontSize: 10, height: 32, justifyContent: 'center' }}
-                >
-                  {anim}
-                </button>
-              ))}
+
+            {/* Applied animations settings */}
+            <div style={{ marginTop: 16, borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
+              <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>
+                APPLIED {activeAnimTab.toUpperCase()}
+              </p>
+              {element.animations.filter(a => a.category === activeAnimTab).length === 0 ? (
+                <p style={{ fontSize: 10, color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
+                  No {activeAnimTab} animation applied
+                </p>
+              ) : (
+                element.animations.filter(a => a.category === activeAnimTab).map(anim => (
+                  <div key={anim.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {ALL_ANIMATIONS.find(a => a.name === anim.name)?.label || anim.name}
+                      </span>
+                      <button 
+                        className="btn-icon" 
+                        style={{ color: 'var(--accent-red)' }}
+                        onClick={() => dispatch(removeElementAnimation({ elementId: element.id, animationId: anim.id }))}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Duration</span>
+                      <div style={{ flex: 1 }}>
+                        <NumberInput
+                          value={anim.duration}
+                          onChange={val => dispatch(updateElementAnimationDuration({ elementId: element.id, animationId: anim.id, duration: val }))}
+                          min={0.1}
+                          max={5}
+                          step={0.1}
+                          suffix="s"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

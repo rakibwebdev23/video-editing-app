@@ -12,13 +12,13 @@ export type AnimationCategory = 'enter' | 'emphasis' | 'exit';
 export type AnimationName =
   // Enter
   | 'fadeIn' | 'enterLeft' | 'enterRight' | 'enterUp' | 'enterDown'
-  | 'rotateIn' | 'flipX' | 'flipY' | 'flip' | 'zoomIn' | 'rollIn' | 'slideIn'
+  | 'rotateIn' | 'flipX' | 'flipY' | 'flip' | 'zoomIn' | 'rollIn' | 'slideIn' | 'blurIn'
   // Emphasis
   | 'pulse' | 'shake' | 'bounce' | 'spin' | 'flash' | 'swing'
   | 'tada' | 'rubber' | 'jello' | 'heartBeat' | 'wobble' | 'headShake'
   // Exit
   | 'fadeOut' | 'exitLeft' | 'exitRight' | 'exitUp' | 'exitDown'
-  | 'zoomOut' | 'rotateOut' | 'flipOutX' | 'flipOutY' | 'slideOut' | 'rollOut' | 'hinge';
+  | 'zoomOut' | 'rotateOut' | 'flipOutX' | 'flipOutY' | 'slideOut' | 'rollOut' | 'hinge' | 'blurOut';
 
 export interface PageAnimation {
   id: string;
@@ -55,8 +55,8 @@ export type SidebarTab = 'upload' | 'elements' | 'live';
 export type MediaFilter = 'all' | 'image' | 'video' | 'audio';
 
 export type TransitionName =
-  | 'none' | 'fade' | 'slideLeft' | 'slideRight' | 'slideUp' | 'slideDown'
-  | 'zoom' | 'flip' | 'rotate' | 'wipe';
+  | 'none' | 'fade' | 'fadeBlack' | 'slideLeft' | 'slideRight' | 'slideUp' | 'slideDown'
+  | 'zoom' | 'flip' | 'rotate' | 'wipe' | 'blur';
 
 export interface PageTransition {
   name: TransitionName;

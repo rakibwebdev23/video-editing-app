@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { Play, Pause, SkipBack, Scissors } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
-import { togglePlayback, tickTime, setCurrentTime, setPlaying } from '../../store/slices/timelineSlice';
+import { togglePlayback, tickTime, setCurrentTime, setPlaying, setZoom } from '../../store/slices/timelineSlice';
 import { splitElement } from '../../store/slices/elementsSlice';
 import { formatTimeShort } from '../../utils/timeFormat';
 
@@ -94,7 +94,7 @@ export default function PlaybackControls() {
       </button>
 
       {/* Time display */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 20 }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
           {formatTimeShort(currentTime)}
         </span>
@@ -102,6 +102,24 @@ export default function PlaybackControls() {
         <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
           {formatTimeShort(totalDuration)}
         </span>
+      </div>
+
+      {/* Zoom Control */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderLeft: '1px solid var(--border-subtle)', paddingLeft: 20 }}>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>ZOOM</span>
+        <input
+          type="range"
+          min={20}
+          max={200}
+          value={useAppSelector(s => s.timeline.zoom)}
+          onChange={e => dispatch(setZoom(parseInt(e.target.value)))}
+          style={{
+            width: 80,
+            accentColor: 'var(--accent-blue)',
+            cursor: 'pointer',
+            height: 4
+          }}
+        />
       </div>
     </div>
   );

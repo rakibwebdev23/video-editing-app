@@ -2,6 +2,7 @@
 import React from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { updatePageLayout } from '../../store/slices/pagesSlice';
+import { reassignZones } from '../../store/slices/elementsSlice';
 import { LayoutType } from '../../types/editor.types';
 import { LAYOUTS } from '../../constants/layouts';
 import Dropdown from '../ui/Dropdown';
@@ -61,12 +62,18 @@ export default function LayoutSelector({ pageId }: { pageId: string }) {
   const page = useAppSelector(s => s.pages.pages.find(p => p.id === pageId));
   if (!page) return null;
 
+  const onLayoutChange = (layoutId: LayoutType) => {
+    dispatch(updatePageLayout({ pageId, layout: layoutId }));
+    const zonesCount = LAYOUTS.find(l => l.id === layoutId)?.zones || 1;
+    dispatch(reassignZones({ pageId, zonesCount }));
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <Dropdown
         options={LAYOUT_OPTIONS}
         value={page.layout}
-        onChange={val => dispatch(updatePageLayout({ pageId, layout: val as LayoutType }))}
+        onChange={val => onLayoutChange(val as LayoutType)}
       />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
         {LAYOUTS.map(l => (
@@ -74,7 +81,7 @@ export default function LayoutSelector({ pageId }: { pageId: string }) {
             key={l.id}
             id={l.id}
             active={page.layout === l.id}
-            onClick={() => dispatch(updatePageLayout({ pageId, layout: l.id }))}
+            onClick={() => onLayoutChange(l.id)}
           />
         ))}
       </div>

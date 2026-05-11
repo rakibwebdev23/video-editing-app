@@ -94,7 +94,7 @@ export default function ElementsPanel() {
   const activePageId = useAppSelector(s => s.pages.activePageId);
 
   const handleAddShape = (shape: ShapeDef) => {
-    const elementId = `el-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const elementId = `el-${crypto.randomUUID()}`;
     const defaults = SHAPE_DEFAULTS[shape.type];
     dispatch(addElement({
       id: elementId,
@@ -120,7 +120,9 @@ export default function ElementsPanel() {
       fontSize: defaults.fontSize,
       startTime: 0,
       duration: 10,
-      animations: [],
+      animations: [
+        { id: `anim-${crypto.randomUUID()}`, name: 'fadeIn', category: 'enter', duration: 0.6 }
+      ],
       zIndex: 10,
     }));
     dispatch(addElementToPage({ pageId: activePageId, elementId }));

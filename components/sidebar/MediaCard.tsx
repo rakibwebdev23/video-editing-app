@@ -1,4 +1,4 @@
-import { Image as ImageIcon, FileVideo, Trash2 as TrashIcon } from 'lucide-react';
+import { Image as ImageIcon, FileVideo, Trash2 as TrashIcon, Plus } from 'lucide-react';
 import { MediaResource } from '../../types/editor.types';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { addElement } from '../../store/slices/elementsSlice';
@@ -31,18 +31,19 @@ export default function MediaCard({ resource, pageId }: MediaCardProps) {
     e.dataTransfer.setData('resourceType', resource.type);
   };
 
-  const handleClick = () => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!pageId) return;
 
-    // Smart Layout Detection: Find next available zone
+    // Smart Layout Detection: Find next available zone (0-indexed)
     const elementsOnPage = allElements.filter(el => el.pageId === pageId);
-    const usedZones = elementsOnPage.map(el => el.zone).filter(z => z !== null);
-    
-    // Find first zone that isn't taken (starting from 1)
-    let nextZone = null;
+    const usedZones = elementsOnPage.map(el => el.zone).filter(z => z !== null) as number[];
+
+    let nextZone: number | null = null;
     const layoutConfig = LAYOUTS.find(l => l.id === activePage?.layout);
-    if (layoutConfig && layoutConfig.zones > 1) {
-      for (let i = 1; i <= layoutConfig.zones; i++) {
+    
+    if (layoutConfig) {
+      for (let i = 0; i < layoutConfig.zones; i++) {
         if (!usedZones.includes(i)) {
           nextZone = i;
           break;
@@ -50,11 +51,10 @@ export default function MediaCard({ resource, pageId }: MediaCardProps) {
       }
     }
 
-    // Add to canvas center or zone
     const elementId = `el-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const elWidth = 400;
     const elHeight = 300;
-    
+
     dispatch(addElement({
       id: elementId,
       pageId,
@@ -71,9 +71,9 @@ export default function MediaCard({ resource, pageId }: MediaCardProps) {
       fillMode: 'fill',
       opacity: 1,
       rotation: 0,
-      freePosition: nextZone === null, // If in a zone, don't use free position
+      freePosition: nextZone === null, 
       startTime: 0,
-      duration: resource.duration || 10,
+      duration: Math.min(resource.duration || 5, 5), 
       animations: [],
       zIndex: elementsOnPage.length + 1,
     }));
@@ -87,7 +87,6 @@ export default function MediaCard({ resource, pageId }: MediaCardProps) {
     <div
       draggable
       onDragStart={handleDragStart}
-      onClick={handleClick}
       title={resource.name}
       style={{
         position: 'relative',
@@ -111,28 +110,36 @@ export default function MediaCard({ resource, pageId }: MediaCardProps) {
         setShowMenu(false);
       }}
     >
-      {/* 3-dot Delete Menu */}
+      {/* Action Buttons Overlay */}
       {showMenu && (
-        <button
-          onClick={handleDelete}
-          style={{
-            position: 'absolute',
-            top: 4,
-            left: 4,
-            zIndex: 10,
-            background: 'rgba(0,0,0,0.6)',
-            border: 'none',
-            borderRadius: 4,
-            padding: 4,
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          title="Delete media"
-        >
-          <TrashIcon size={12} color="#ef4444" />
-        </button>
+        <div style={{
+          position: 'absolute', top: 4, left: 4, right: 4,
+          display: 'flex', justifyContent: 'space-between', zIndex: 10,
+        }}>
+          <button
+            onClick={handleDelete}
+            style={{
+              background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: 4,
+              padding: 4, color: 'white', display: 'flex', cursor: 'pointer'
+            }}
+            title="Delete media"
+          >
+            <TrashIcon size={12} color="#ef4444" />
+          </button>
+
+          <button
+            onClick={handleAdd}
+            style={{
+              background: 'var(--accent-blue)', border: 'none', borderRadius: 4,
+              padding: '4px 8px', color: 'white', display: 'flex', alignItems: 'center',
+              gap: 4, fontSize: 10, fontWeight: 600, cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            }}
+            title="Add to Canvas"
+          >
+            <Plus size={12} /> ADD
+          </button>
+        </div>
       )}
 
       {isAudio ? (
@@ -148,7 +155,7 @@ export default function MediaCard({ resource, pageId }: MediaCardProps) {
             {Array.from({ length: 12 }, (_, i) => (
               <div key={i} style={{
                 width: 3,
-                height: `${20 + Math.sin(i * 0.8) * 12}px`,
+                height: `${12 + Math.sin(i * 0.8) * 12}px`,
                 background: 'var(--accent-blue)',
                 borderRadius: 2,
                 opacity: 0.8,
@@ -156,45 +163,72 @@ export default function MediaCard({ resource, pageId }: MediaCardProps) {
             ))}
           </div>
         </div>
-      ) : resource.thumbnail ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={resource.thumbnail}
-          alt={resource.name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-          loading="lazy"
-        />
+      ) : (resource.thumbnail && resource.thumbnail !== '') ? (
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={resource.thumbnail}
+            alt={resource.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            loading="lazy"
+          />
+          {isVideo && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.2)',
+            }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.9)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              }}>
+                <div style={{
+                  width: 0, height: 0,
+                  borderTop: '5px solid transparent',
+                  borderBottom: '5px solid transparent',
+                  borderLeft: '8px solid black',
+                  marginLeft: 2,
+                }} />
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <div style={{
           width: '100%', height: '100%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'var(--bg-tertiary)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: 'linear-gradient(135deg, #2a3347, #1e2535)',
+          gap: 6,
         }}>
-          {isVideo ? <FileVideo size={28} color="var(--text-muted)" /> : <ImageIcon size={28} color="var(--text-muted)" />}
+          {isVideo ? (
+            <>
+              <FileVideo size={32} color="rgba(255,255,255,0.4)" />
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '0.05em' }}>VIDEO</span>
+            </>
+          ) : (
+            <>
+              <ImageIcon size={32} color="rgba(255,255,255,0.4)" />
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '0.05em' }}>IMAGE</span>
+            </>
+          )}
         </div>
       )}
 
-      {/* Type badge */}
-      {isVideo && (
-        <div style={{
-          position: 'absolute', top: 4, right: 4,
-          background: 'rgba(0,0,0,0.7)', borderRadius: 3,
-          padding: '1px 4px',
-        }}>
-          <FileVideo size={10} color="white" />
-        </div>
-      )}
-
-      {/* Label */}
+      {/* Label Overlay */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-        padding: '12px 4px 4px',
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(4px)',
+        padding: '6px 4px',
+        borderTop: '1px solid rgba(255,255,255,0.1)',
       }}>
         <p style={{
-          fontSize: 9, color: 'white', whiteSpace: 'nowrap',
+          fontSize: 10, color: 'white', whiteSpace: 'nowrap',
           overflow: 'hidden', textOverflow: 'ellipsis',
-          textAlign: 'center',
+          textAlign: 'center', fontWeight: 500
         }}>
           {resource.name}
         </p>
