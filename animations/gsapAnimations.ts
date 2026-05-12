@@ -199,7 +199,10 @@ export function playTransitionAnimation(container: HTMLElement, name: Transition
       return gsap.fromTo(container, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration, ease: 'power1.inOut' });
     case 'blur':
       return gsap.fromTo(container, { filter: 'blur(20px)', opacity: 0 }, { filter: 'blur(0px)', opacity: 1, duration, ease: 'power2.out' });
+    case 'none':
+      return null;
     default:
+      if (name === 'none') return null;
       return gsap.fromTo(container, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power1.out' });
   }
 }

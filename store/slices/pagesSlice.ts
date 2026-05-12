@@ -29,14 +29,16 @@ const pagesSlice = createSlice({
   name: 'pages',
   initialState,
   reducers: {
-    addPage(state) {
+    addPage(state, action: PayloadAction<{ id?: string; duration?: number } | undefined>) {
       const idx = state.pages.length;
+      const newId = action.payload?.id || `page-${Date.now()}`;
+      const duration = action.payload?.duration || 10;
       const newPage: Page = {
-        id: `page-${Date.now()}`,
+        id: newId,
         name: `Page ${idx + 1}`,
         layout: 'single',
         backgroundColor: '#FCFAFF',
-        duration: 10,
+        duration,
         transition: { name: 'none', duration: 1.5 } as PageTransition,
         animations: [],
         elementIds: [],

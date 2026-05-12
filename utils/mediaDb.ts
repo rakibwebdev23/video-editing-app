@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export const saveFileToDB = async (id: string, file: File | Blob, thumbnail?: Blob): Promise<void> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {

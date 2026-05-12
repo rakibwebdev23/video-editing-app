@@ -10,28 +10,29 @@ import { playEnterAnimation, playExitAnimation, playEmphasisAnimation } from '..
 interface Props {
   element: CanvasElement;
   isSelected: boolean;
+  pageStartTime: number; // Added to handle multi-page timing
   onSelect: (e: MouseEvent) => void;
   onPositionChange: (x: number, y: number) => void;
   onSizeChange: (w: number, h: number) => void;
 }
 
-function VideoElement({ element, objectFit }: { element: CanvasElement; objectFit: string }) {
+function VideoElement({ element, objectFit, pageStartTime }: { element: CanvasElement; objectFit: string; pageStartTime: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { currentTime, isPlaying } = useAppSelector(s => s.timeline);
-  
-  const relativeTime = currentTime - element.startTime + (element.startTimeOffset || 0);
-  const isVisible = currentTime >= element.startTime && currentTime <= (element.startTime + element.duration);
+
+  const relativeTime = (currentTime - pageStartTime) - element.startTime + (element.startTimeOffset || 0);
+  const isVisible = (currentTime - pageStartTime) >= element.startTime && (currentTime - pageStartTime) <= (element.startTime + element.duration);
 
   useEffect(() => {
     if (!videoRef.current || !isVisible) return;
-    
-    const videoTime = Math.max(0, relativeTime); 
+
+    const videoTime = Math.max(0, relativeTime);
     if (Math.abs(videoRef.current.currentTime - videoTime) > 0.1) {
       videoRef.current.currentTime = videoTime;
     }
 
     if (isPlaying && videoRef.current.paused) {
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play().catch(() => { });
     } else if (!isPlaying && !videoRef.current.paused) {
       videoRef.current.pause();
     }
@@ -55,23 +56,23 @@ function VideoElement({ element, objectFit }: { element: CanvasElement; objectFi
   );
 }
 
-function AudioElement({ element }: { element: CanvasElement }) {
+function AudioElement({ element, pageStartTime }: { element: CanvasElement; pageStartTime: number }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const { currentTime, isPlaying } = useAppSelector(s => s.timeline);
-  
-  const relativeTime = currentTime - element.startTime + (element.startTimeOffset || 0);
-  const isVisible = currentTime >= element.startTime && currentTime <= (element.startTime + element.duration);
+
+  const relativeTime = (currentTime - pageStartTime) - element.startTime + (element.startTimeOffset || 0);
+  const isVisible = (currentTime - pageStartTime) >= element.startTime && (currentTime - pageStartTime) <= (element.startTime + element.duration);
 
   useEffect(() => {
     if (!audioRef.current || !isVisible) return;
-    
+
     const audioTime = Math.max(0, relativeTime);
     if (Math.abs(audioRef.current.currentTime - audioTime) > 0.1) {
       audioRef.current.currentTime = audioTime;
     }
 
     if (isPlaying && audioRef.current.paused) {
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch(() => { });
     } else if (!isPlaying && !audioRef.current.paused) {
       audioRef.current.pause();
     }
@@ -124,27 +125,27 @@ function ShapeContent({ element }: { element: CanvasElement }) {
           padding: 8,
         }}>
           <svg width="100%" height="100%" viewBox="0 0 100 100" style={{ display: 'block' }}>
-            <rect x="5" y="5" width="28" height="28" rx="2" fill="#000"/>
-            <rect x="9" y="9" width="20" height="20" rx="1" fill="white"/>
-            <rect x="12" y="12" width="14" height="14" rx="1" fill="#000"/>
-            <rect x="67" y="5" width="28" height="28" rx="2" fill="#000"/>
-            <rect x="71" y="9" width="20" height="20" rx="1" fill="white"/>
-            <rect x="74" y="12" width="14" height="14" rx="1" fill="#000"/>
-            <rect x="5" y="67" width="28" height="28" rx="2" fill="#000"/>
-            <rect x="9" y="71" width="20" height="20" rx="1" fill="white"/>
-            <rect x="12" y="74" width="14" height="14" rx="1" fill="#000"/>
-            <rect x="40" y="40" width="4" height="4" fill="#000"/>
-            <rect x="50" y="40" width="4" height="4" fill="#000"/>
-            <rect x="44" y="44" width="4" height="4" fill="#000"/>
-            <rect x="56" y="44" width="4" height="4" fill="#000"/>
-            <rect x="40" y="50" width="4" height="4" fill="#000"/>
-            <rect x="60" y="50" width="4" height="4" fill="#000"/>
-            <rect x="48" y="54" width="4" height="4" fill="#000"/>
-            <rect x="56" y="60" width="4" height="4" fill="#000"/>
-            <rect x="40" y="64" width="4" height="4" fill="#000"/>
-            <rect x="48" y="64" width="4" height="4" fill="#000"/>
-            <rect x="60" y="56" width="4" height="4" fill="#000"/>
-            <rect x="44" y="60" width="4" height="4" fill="#000"/>
+            <rect x="5" y="5" width="28" height="28" rx="2" fill="#000" />
+            <rect x="9" y="9" width="20" height="20" rx="1" fill="white" />
+            <rect x="12" y="12" width="14" height="14" rx="1" fill="#000" />
+            <rect x="67" y="5" width="28" height="28" rx="2" fill="#000" />
+            <rect x="71" y="9" width="20" height="20" rx="1" fill="white" />
+            <rect x="74" y="12" width="14" height="14" rx="1" fill="#000" />
+            <rect x="5" y="67" width="28" height="28" rx="2" fill="#000" />
+            <rect x="9" y="71" width="20" height="20" rx="1" fill="white" />
+            <rect x="12" y="74" width="14" height="14" rx="1" fill="#000" />
+            <rect x="40" y="40" width="4" height="4" fill="#000" />
+            <rect x="50" y="40" width="4" height="4" fill="#000" />
+            <rect x="44" y="44" width="4" height="4" fill="#000" />
+            <rect x="56" y="44" width="4" height="4" fill="#000" />
+            <rect x="40" y="50" width="4" height="4" fill="#000" />
+            <rect x="60" y="50" width="4" height="4" fill="#000" />
+            <rect x="48" y="54" width="4" height="4" fill="#000" />
+            <rect x="56" y="60" width="4" height="4" fill="#000" />
+            <rect x="40" y="64" width="4" height="4" fill="#000" />
+            <rect x="48" y="64" width="4" height="4" fill="#000" />
+            <rect x="60" y="56" width="4" height="4" fill="#000" />
+            <rect x="44" y="60" width="4" height="4" fill="#000" />
           </svg>
         </div>
       );
@@ -156,7 +157,7 @@ function ShapeContent({ element }: { element: CanvasElement }) {
           border: `2px solid ${color}`,
           borderRadius: 4,
           boxSizing: 'border-box',
-        }}/>
+        }} />
       );
     case 'ellipse':
       return (
@@ -166,13 +167,13 @@ function ShapeContent({ element }: { element: CanvasElement }) {
           border: `2px solid ${color}`,
           borderRadius: '50%',
           boxSizing: 'border-box',
-        }}/>
+        }} />
       );
     case 'triangle':
       return (
         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-            <polygon points="50,5 95,95 5,95" fill={bg !== 'transparent' ? bg : 'none'} stroke={color} strokeWidth="3"/>
+            <polygon points="50,5 95,95 5,95" fill={bg !== 'transparent' ? bg : 'none'} stroke={color} strokeWidth="3" />
           </svg>
         </div>
       );
@@ -184,7 +185,7 @@ function ShapeContent({ element }: { element: CanvasElement }) {
           padding: '0 12px',
         }}>
           <div style={{ flex: 1, position: 'relative', height: 4, background: '#e5e7eb', borderRadius: 2 }}>
-            <div style={{ width: `${parseInt(text || '50')}%`, height: '100%', background: color, borderRadius: 2 }}/>
+            <div style={{ width: `${parseInt(text || '50')}%`, height: '100%', background: color, borderRadius: 2 }} />
             <div style={{
               position: 'absolute',
               top: '50%', left: `${parseInt(text || '50')}%`,
@@ -194,7 +195,7 @@ function ShapeContent({ element }: { element: CanvasElement }) {
               borderRadius: '50%',
               border: '2px solid white',
               boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-            }}/>
+            }} />
           </div>
         </div>
       );
@@ -204,7 +205,7 @@ function ShapeContent({ element }: { element: CanvasElement }) {
 }
 
 export default function CanvasElementComponent({
-  element, isSelected, onSelect, onPositionChange, onSizeChange,
+  element, isSelected, pageStartTime, onSelect, onPositionChange, onSizeChange,
 }: Props) {
   const elRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ mouseX: number; mouseY: number; elX: number; elY: number } | null>(null);
@@ -215,11 +216,12 @@ export default function CanvasElementComponent({
   const { currentTime } = useAppSelector(s => s.timeline);
   const lastAnimatedTime = useRef<number>(-1);
 
-  const isVisible = currentTime >= element.startTime && currentTime <= (element.startTime + element.duration);
+  const localTime = currentTime - pageStartTime;
+  const isVisible = localTime >= element.startTime && localTime <= (element.startTime + element.duration);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {});
-    
+    const ctx = gsap.context(() => { });
+
     if (!elRef.current || !isVisible) {
       if (!isVisible) {
         lastAnimatedTime.current = -1;
@@ -251,11 +253,11 @@ export default function CanvasElementComponent({
 
     // Trigger Emphasis Animation (Combo)
     if (emphasisAnim && lastAnimatedTime.current === -1) {
-       ctx.add(() => {
-         const tl = playEmphasisAnimation(elRef.current!, emphasisAnim.name, emphasisAnim.duration);
-         tl.repeat(-1);
-       });
-       lastAnimatedTime.current = -2;
+      ctx.add(() => {
+        const tl = playEmphasisAnimation(elRef.current!, emphasisAnim.name, emphasisAnim.duration);
+        tl.repeat(-1);
+      });
+      lastAnimatedTime.current = -2;
     }
 
     // Reset / Scrub logic
@@ -265,8 +267,8 @@ export default function CanvasElementComponent({
     if (!isAtStart && !isAtEnd && !isDuringEnter && !isDuringExit && lastAnimatedTime.current !== -2) {
       // If we are in the middle and no combo animation is active, ensure properties are clean
       if (!emphasisAnim) {
-         gsap.set(elRef.current, { clearProps: 'all' });
-         lastAnimatedTime.current = -1;
+        gsap.set(elRef.current, { clearProps: 'all' });
+        lastAnimatedTime.current = -1;
       }
     }
 
@@ -276,7 +278,9 @@ export default function CanvasElementComponent({
   const handleMouseDown = (e: MouseEvent) => {
     e.stopPropagation();
     onSelect(e);
-    if (!element.freePosition) return;
+    // Disable dragging if in a layout zone
+    if (!element.freePosition || element.zone !== null) return;
+
     dragStart.current = {
       mouseX: e.clientX, mouseY: e.clientY,
       elX: element.x, elY: element.y,
@@ -285,6 +289,9 @@ export default function CanvasElementComponent({
   };
 
   const handleResizeMouseDown = (e: MouseEvent, handle: string) => {
+    // Disable resizing if in a layout zone
+    if (element.zone !== null) return;
+
     e.stopPropagation();
     e.preventDefault();
     resizeStart.current = {
@@ -330,7 +337,7 @@ export default function CanvasElementComponent({
 
   const getHandleStyle = (handle: string): CSSProperties => {
     const size = 12;
-    const offset = -6; 
+    const offset = -6;
     const base: CSSProperties = {
       position: 'absolute', width: size, height: size,
       background: 'white', border: '2px solid #3b82f6',
@@ -352,10 +359,10 @@ export default function CanvasElementComponent({
 
   const objectFit = element.fillMode === 'fill' ? 'cover'
     : element.fillMode === 'fit' ? 'contain'
-    : element.fillMode === 'stretch' ? 'fill'
-    : 'none';
+      : element.fillMode === 'stretch' ? 'fill'
+        : 'none';
 
-  if (element.type === 'audio') return <AudioElement element={element} />;
+  if (element.type === 'audio') return <AudioElement element={element} pageStartTime={pageStartTime} />;
   if (!isVisible) return null;
 
   return (
@@ -370,19 +377,21 @@ export default function CanvasElementComponent({
         top: element.y,
         width: element.width,
         height: element.height,
-        cursor: element.freePosition ? 'move' : 'default',
-        outline: isSelected ? '2px solid #3b82f6' : 'none',
-        outlineOffset: isSelected ? 2 : 0,
+        cursor: element.freePosition ? 'move' : 'pointer', // Changed to pointer for better feedback
+        outline: isSelected ? '3px solid #3b82f6' : 'none', // Thicker outline
+        outlineOffset: isSelected ? 0 : 0,
+        boxShadow: isSelected ? '0 0 0 4px rgba(59, 130, 246, 0.3)' : 'none', // Added glow
         userSelect: 'none',
-        zIndex: isSelected ? 1000 : element.zIndex,
+        zIndex: isSelected ? 9999 : (element.zIndex || 1), // Force to top
         opacity: element.opacity,
+        transition: 'outline 0.1s ease, box-shadow 0.1s ease', // Smooth selection
       }}
     >
       <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
         {element.type === 'shape' ? (
           <ShapeContent element={element} />
         ) : element.type === 'video' ? (
-          <VideoElement element={element} objectFit={objectFit} />
+          <VideoElement element={element} objectFit={objectFit} pageStartTime={pageStartTime} />
         ) : element.url && element.url !== '#' ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

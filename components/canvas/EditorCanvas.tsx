@@ -3,9 +3,12 @@ import { useRef, useState, useCallback, MouseEvent } from 'react';
 import { useAppSelector } from '../../store/editorStore';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../../constants/layouts';
 import CanvasFrame from './CanvasFrame';
+import CanvasElementComponent from './CanvasElement';
 
 export default function EditorCanvas() {
   const canvasZoom = useAppSelector(s => s.ui.canvasZoom);
+  const allElements = useAppSelector(s => s.elements.elements);
+  const selectedIds = useAppSelector(s => s.selection.selectedElementIds);
   const [isPanning, setIsPanning] = useState(false);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const panStart = useRef<{ mouseX: number; mouseY: number; offsetX: number; offsetY: number } | null>(null);
@@ -46,6 +49,7 @@ export default function EditorCanvas() {
         flex: 1,
         width: '100%',
         height: '100%',
+        minHeight: 0, // Prevent flex expansion
         overflow: 'hidden',
         background: 'var(--bg-primary)',
         backgroundImage: `
@@ -56,6 +60,7 @@ export default function EditorCanvas() {
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
+        zIndex: 1,
       }}
       onMouseDown={handleMiddleMouseDown}
       onMouseMove={handleMouseMove}
@@ -102,6 +107,18 @@ export default function EditorCanvas() {
           }}
         >
           <CanvasFrame />
+          {/* Global elements (Background Audio) */}
+          {allElements.filter(el => el.pageId === 'global').map(el => (
+            <CanvasElementComponent
+              key={el.id}
+              element={el}
+              isSelected={selectedIds.includes(el.id)}
+              pageStartTime={0}
+              onSelect={() => {}} // Selecting global audio from timeline is better
+              onPositionChange={() => {}}
+              onSizeChange={() => {}}
+            />
+          ))}
         </div>
       </div>
     </div>

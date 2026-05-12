@@ -3,6 +3,8 @@ import { useRef } from 'react';
 import { CanvasElement } from '../../types/element.types';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { selectElement } from '../../store/slices/selectionSlice';
+import { setActivePage } from '../../store/slices/pagesSlice';
+import { setCurrentTime } from '../../store/slices/timelineSlice';
 import { updateElementStartTime, updateElementDuration, trimElement } from '../../store/slices/elementsSlice';
 
 interface TimelineClipProps {
@@ -27,13 +29,33 @@ export default function TimelineClip({ element, zoom }: TimelineClipProps) {
   const resizeStartX = useRef<number | null>(null);
   const resizeStartDuration = useRef<number>(0);
 
-  const left = element.startTime * zoom;
+  const pages = useAppSelector(s => s.pages.pages);
+  const activePageId = useAppSelector(s => s.pages.activePageId);
+
+  // Calculate absolute start time based on the page this element belongs to
+  let pageStartTime = 0;
+  if (element.pageId !== 'global') {
+    for (const p of pages) {
+      if (p.id === element.pageId) break;
+      pageStartTime += p.duration;
+    }
+  }
+
+  const left = (pageStartTime + element.startTime) * zoom;
   const width = Math.max(20, element.duration * zoom);
+
+  const jumpToClip = () => {
+    dispatch(selectElement(element.id));
+    if (activePageId !== element.pageId) {
+      dispatch(setActivePage(element.pageId));
+    }
+    dispatch(setCurrentTime(pageStartTime + element.startTime));
+  };
 
   const handleDragMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    dispatch(selectElement(element.id));
+    jumpToClip();
     dragStartX.current = e.clientX;
     dragStartTime.current = element.startTime;
 
@@ -70,7 +92,6 @@ export default function TimelineClip({ element, zoom }: TimelineClipProps) {
         const newDuration = Math.max(0.5, resizeStartDuration.current + dt);
         dispatch(updateElementDuration({ id: element.id, duration: newDuration }));
       } else {
-        // Left trim
         const delta = Math.min(resizeStartDuration.current - 0.5, dt);
         const newStart = initialStartTime + delta;
         const newDuration = resizeStartDuration.current - delta;
@@ -103,12 +124,12 @@ export default function TimelineClip({ element, zoom }: TimelineClipProps) {
   return (
     <div
       onMouseDown={handleDragMouseDown}
-      onClick={(e) => { e.stopPropagation(); dispatch(selectElement(element.id)); }}
+      onClick={(e) => { e.stopPropagation(); jumpToClip(); }}
       title={element.name}
       style={{
         position: 'absolute',
         left,
-        top: 4,
+        top: 4 + ((element.zone || 0) * 28),
         width,
         height: 24,
         background: colors.bg,
@@ -124,26 +145,16 @@ export default function TimelineClip({ element, zoom }: TimelineClipProps) {
         userSelect: 'none',
         boxSizing: 'border-box',
       }}
-      onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-      onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
     >
-      {/* Left-edge resize handle */}
       <div
         onMouseDown={e => handleResizeMouseDown(e, 'left')}
         style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: 6,
-          cursor: 'ew-resize',
-          background: `linear-gradient(to left, transparent, ${colors.border}60)`,
-          zIndex: 5,
+          position: 'absolute', left: 0, top: 0, bottom: 0, width: 6,
+          cursor: 'ew-resize', zIndex: 5,
         }}
       />
-
       {element.type === 'audio' && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-around', opacity: 0.2, pointerEvents: 'none' }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-around', opacity: 0.2 }}>
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} style={{ width: 2, height: `${20 + ((i * 13) % 60)}%`, background: colors.text, borderRadius: 1 }} />
           ))}
@@ -153,19 +164,11 @@ export default function TimelineClip({ element, zoom }: TimelineClipProps) {
       <span style={{ fontSize: 10, color: colors.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, zIndex: 1 }}>
         {element.name}
       </span>
-
-      {/* Right-edge resize handle */}
       <div
         onMouseDown={e => handleResizeMouseDown(e, 'right')}
         style={{
-          position: 'absolute',
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 6,
-          cursor: 'ew-resize',
-          background: `linear-gradient(to right, transparent, ${colors.border}60)`,
-          zIndex: 5,
+          position: 'absolute', right: 0, top: 0, bottom: 0, width: 6,
+          cursor: 'ew-resize', zIndex: 5,
         }}
       />
     </div>

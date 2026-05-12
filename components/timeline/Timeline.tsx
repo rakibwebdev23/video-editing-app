@@ -7,14 +7,12 @@ import PlaybackControls from './PlaybackControls';
 import TimelineRuler from './TimelineRuler';
 import TimelineTrack from './TimelineTrack';
 import TimelineScrubber from './TimelineScrubber';
-import { DEFAULTS } from '../../constants/defaults';
 
 export default function Timeline() {
   const dispatch = useAppDispatch();
   const { totalDuration, currentTime, zoom } = useAppSelector(s => s.timeline);
   const { pages, activePageId } = useAppSelector(s => s.pages);
   const allElements = useAppSelector(s => s.elements.elements);
-  const pageElements = allElements.filter(el => el.pageId === activePageId);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-sync project duration to the total duration of all pages
@@ -24,7 +22,7 @@ export default function Timeline() {
       const endTime = el.startTime + el.duration;
       return endTime > max ? endTime : max;
     }, 0);
-    
+
     const finalDuration = Math.max(totalPagesDuration, maxClipEndTime, 10);
 
     if (Math.abs(totalDuration - finalDuration) > 0.1) {
@@ -51,7 +49,9 @@ export default function Timeline() {
 
   return (
     <div style={{
-      height: 168,
+      height: 240,
+      minHeight: 240,
+      maxHeight: 240,
       background: 'var(--timeline-bg)',
       borderTop: '1px solid var(--border-color)',
       display: 'flex',
@@ -62,76 +62,67 @@ export default function Timeline() {
       <PlaybackControls />
       <PageTabs />
 
-      {/* Scrollable tracks area */}
+      {/* Scrollable area for everything */}
       <div
         ref={scrollRef}
         style={{
           flex: 1,
           overflowX: 'auto',
-          overflowY: 'hidden',
+          overflowY: 'auto',
           position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
         }}
       >
-        {/* Ruler row */}
-        <div style={{ display: 'flex', flexShrink: 0 }}>
-          {/* Label spacer */}
-          <div style={{
-            width: RULER_OFFSET,
-            flexShrink: 0,
-            background: 'var(--bg-secondary)',
-            borderRight: '1px solid var(--border-color)',
-            borderBottom: '1px solid var(--border-color)',
+        <div style={{ minWidth: (totalDuration * zoom) + RULER_OFFSET, position: 'relative' }}>
+          {/* Ruler row (Sticky) */}
+          <div style={{ 
+            display: 'flex', 
+            position: 'sticky', 
+            top: 0, 
+            zIndex: 110, 
+            background: 'var(--timeline-bg)',
             height: 24,
-          }} />
-          <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minWidth: totalDuration * zoom }}>
-            <TimelineRuler zoom={zoom} totalDuration={totalDuration} width={totalDuration * zoom} />
-            {/* Scrubber positioned within ruler */}
-            <TimelineScrubber containerRef={scrollRef} zoom={zoom} totalDuration={totalDuration} />
+          }}>
+            <div style={{
+              width: RULER_OFFSET,
+              flexShrink: 0,
+              background: 'var(--bg-secondary)',
+              borderRight: '1px solid var(--border-color)',
+              borderBottom: '1px solid var(--border-color)',
+            }} />
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+              <TimelineRuler zoom={zoom} totalDuration={totalDuration} width={totalDuration * zoom} />
+              <TimelineScrubber containerRef={scrollRef} zoom={zoom} totalDuration={totalDuration} />
+            </div>
           </div>
-        </div>
 
-        {/* Tracks */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          <TimelineTrack
-            trackType="video"
-            elements={pageElements}
-            zoom={zoom}
-            totalDuration={totalDuration}
-          />
-          <TimelineTrack
-            trackType="audio"
-            elements={pageElements}
-            zoom={zoom}
-            totalDuration={totalDuration}
-          />
+          {/* Tracks Area */}
+          <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            <TimelineTrack
+              trackType="video"
+              elements={allElements}
+              zoom={zoom}
+              totalDuration={totalDuration}
+            />
+            <TimelineTrack
+              trackType="audio"
+              elements={allElements}
+              zoom={zoom}
+              totalDuration={totalDuration}
+            />
 
-          {/* Global Playhead Line (Relative to current page view) */}
-          {(() => {
-            let pageStartTime = 0;
-            for (const p of pages) {
-              if (p.id === activePageId) break;
-              pageStartTime += p.duration;
-            }
-            const relativeTime = currentTime - pageStartTime;
-            // Only show playhead if it's within the current page's time range
-            if (relativeTime >= 0 && relativeTime <= (pages.find(p => p.id === activePageId)?.duration || 0)) {
-              return (
-                <div style={{
-                  position: 'absolute',
-                  top: 0, bottom: 0,
-                  left: RULER_OFFSET + (relativeTime * zoom),
-                  width: 2,
-                  background: 'var(--accent-blue)',
-                  zIndex: 100,
-                  pointerEvents: 'none',
-                  boxShadow: '0 0 8px rgba(59,130,246,0.6)',
-                }} />
-              );
-            }
-            return null;
-          })()}
+            {/* Global Playhead Line */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: RULER_OFFSET + (currentTime * zoom),
+              width: 2,
+              background: 'var(--accent-blue)',
+              zIndex: 100,
+              pointerEvents: 'none',
+              boxShadow: '0 0 8px rgba(59,130,246,0.6)',
+            }} />
+          </div>
         </div>
       </div>
     </div>

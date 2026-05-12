@@ -4,6 +4,7 @@ import { CanvasElement } from '../../types/element.types';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { addElement } from '../../store/slices/elementsSlice';
 import { addElementToPage } from '../../store/slices/pagesSlice';
+import { LAYOUTS } from '../../constants/layouts';
 import TimelineClip from './TimelineClip';
 
 interface TimelineTrackProps {
@@ -59,12 +60,23 @@ export default function TimelineTrack({ trackType, elements, zoom, totalDuration
     dispatch(addElementToPage({ pageId: activePageId, elementId }));
   };
 
+  const pages = useAppSelector(s => s.pages.pages);
+  
+  // Calculate max zones across the whole project for a stable timeline height
+  const maxProjectZones = pages.reduce((max, p) => {
+    const layout = LAYOUTS.find(l => l.id === p.layout);
+    return Math.max(max, layout?.zones || 1);
+  }, 1);
+
+  const numZones = trackType === 'video' ? maxProjectZones : 1;
+  const trackHeight = Math.max(40, numZones * 28 + 4);
+
   return (
     <div style={{
       display: 'flex',
       alignItems: 'stretch',
       borderBottom: '1px solid var(--border-subtle)',
-      height: 32,
+      height: trackHeight,
       flexShrink: 0,
     }}>
       {/* Track label */}
@@ -72,16 +84,35 @@ export default function TimelineTrack({ trackType, elements, zoom, totalDuration
         width: 48,
         flexShrink: 0,
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        flexDirection: 'column',
+        alignItems: 'stretch',
         borderRight: '1px solid var(--border-color)',
         background: 'var(--bg-secondary)',
         color: 'var(--text-muted)',
       }}>
-        {trackType === 'video'
-          ? <Video size={14} />
-          : <Music size={14} />
-        }
+        {trackType === 'video' ? (
+          <>
+            {Array.from({ length: numZones }).map((_, i) => (
+              <div key={i} style={{ 
+                height: 28, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: 8,
+                fontWeight: 600,
+                borderBottom: i < numZones - 1 ? '1px solid var(--border-subtle)' : 'none',
+                opacity: 0.6,
+                paddingTop: i === 0 ? 4 : 0,
+              }}>
+                {numZones > 1 ? `Z${i + 1}` : <Video size={14} />}
+              </div>
+            ))}
+          </>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Music size={14} />
+          </div>
+        )}
       </div>
 
       {/* Clips area */}
@@ -91,7 +122,20 @@ export default function TimelineTrack({ trackType, elements, zoom, totalDuration
         background: 'var(--timeline-bg)',
         overflow: 'hidden',
       }}>
-        <div style={{ position: 'relative', width: trackWidth, height: '100%', display: 'flex', alignItems: 'center' }}>
+        <div style={{ position: 'relative', width: trackWidth, height: '100%' }}>
+          {/* Lane Dividers */}
+          {trackType === 'video' && numZones > 1 && Array.from({ length: numZones }).map((_, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              top: i * 28,
+              left: 0,
+              right: 0,
+              height: 28,
+              borderBottom: i < numZones - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+              pointerEvents: 'none',
+            }} />
+          ))}
+
           {trackElements.map(el => (
             <TimelineClip key={el.id} element={el} zoom={zoom} />
           ))}

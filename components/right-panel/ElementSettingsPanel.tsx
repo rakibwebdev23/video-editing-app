@@ -45,7 +45,7 @@ export default function ElementSettingsPanel({ elementId }: { elementId: string 
   const handlePreview = (name: AnimationName, category: AnimationCategory, duration: number) => {
     const el = document.querySelector(`[data-element-id="${elementId}"]`) as HTMLElement;
     if (!el) return;
-    
+
     // Clear previous animations
     gsap.killTweensOf(el);
     gsap.set(el, { clearProps: 'all' });
@@ -79,20 +79,20 @@ export default function ElementSettingsPanel({ elementId }: { elementId: string 
         {/* Copy */}
         <button className="btn-icon" title="Duplicate">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
           </svg>
         </button>
         {/* Bring forward */}
         <button className="btn-icon" title="Bring Forward">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="8" y="8" width="13" height="13" rx="2"/><rect x="3" y="3" width="13" height="13" rx="2" fill="var(--bg-secondary)"/>
+            <rect x="8" y="8" width="13" height="13" rx="2" /><rect x="3" y="3" width="13" height="13" rx="2" fill="var(--bg-secondary)" />
           </svg>
         </button>
         {/* Send back */}
         <button className="btn-icon" title="Send Backward">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="3" width="13" height="13" rx="2"/><rect x="8" y="8" width="13" height="13" rx="2" fill="var(--bg-secondary)"/>
+            <rect x="3" y="3" width="13" height="13" rx="2" /><rect x="8" y="8" width="13" height="13" rx="2" fill="var(--bg-secondary)" />
           </svg>
         </button>
         <button className="btn-icon" title="Delete" style={{ marginLeft: 'auto', color: 'var(--accent-red)' }} onClick={handleDelete}>
@@ -205,7 +205,7 @@ export default function ElementSettingsPanel({ elementId }: { elementId: string 
             </span>
           )}
         </div>
-        
+
         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2 }}>Duration (sec)</p>
@@ -231,12 +231,12 @@ export default function ElementSettingsPanel({ elementId }: { elementId: string 
           </div>
         </div>
 
-        <button 
-          className="btn-ghost" 
-          style={{ 
-            width: '100%', 
-            fontSize: 11, 
-            height: 32, 
+        <button
+          className="btn-ghost"
+          style={{
+            width: '100%',
+            fontSize: 11,
+            height: 32,
             border: '1px solid var(--border-color)',
             justifyContent: 'center',
             gap: 6
@@ -353,7 +353,7 @@ export default function ElementSettingsPanel({ elementId }: { elementId: string 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <p className="label-sm">Animations</p>
           </div>
-          
+
           <TabGroup
             tabs={[
               { id: 'enter', label: 'In' },
@@ -366,57 +366,57 @@ export default function ElementSettingsPanel({ elementId }: { elementId: string 
 
           <div style={{ marginTop: 12 }}>
             {/* Current category selection */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(3, 1fr)', 
-              gap: 8, 
-              maxHeight: 200, 
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 8,
+              maxHeight: 200,
               overflowY: 'auto',
               padding: '4px'
             }}>
-              {(activeAnimTab === 'enter' ? ENTER_ANIMATIONS : 
-                activeAnimTab === 'exit' ? EXIT_ANIMATIONS : 
-                EMPHASIS_ANIMATIONS).map(anim => {
-                  const isApplied = element.animations.some(a => a.category === activeAnimTab && a.name === anim.name);
-                  return (
-                    <button
-                      key={anim.name}
-                      onClick={() => {
-                        dispatch(setElementAnimation({
-                          elementId: element.id,
-                          animation: {
-                            id: `anim-${Date.now()}`,
-                            name: anim.name as AnimationName,
-                            category: activeAnimTab,
-                            duration: anim.defaultDuration
-                          }
-                        }));
-                        handlePreview(anim.name as AnimationName, activeAnimTab, anim.defaultDuration);
-                      }}
-                      className={isApplied ? 'btn-primary' : 'btn-ghost'}
-                      style={{ 
-                        flexDirection: 'column', 
-                        height: 'auto', 
-                        padding: '8px 4px', 
-                        gap: 4,
-                        border: isApplied ? 'none' : '1px solid var(--border-color)',
-                        background: isApplied ? 'var(--accent-blue)' : 'var(--bg-secondary)',
-                        fontSize: 10,
-                        borderRadius: 6
-                      }}
-                    >
-                      <span style={{ fontSize: 16 }}>{anim.icon}</span>
-                      <span style={{ 
-                        overflow: 'hidden', 
-                        textOverflow: 'ellipsis', 
-                        whiteSpace: 'nowrap',
-                        width: '100%'
-                      }}>
-                        {anim.label}
-                      </span>
-                    </button>
-                  );
-                })}
+              {(activeAnimTab === 'enter' ? ENTER_ANIMATIONS :
+                activeAnimTab === 'exit' ? EXIT_ANIMATIONS :
+                  EMPHASIS_ANIMATIONS).map(anim => {
+                    const isApplied = element.animations.some(a => a.category === activeAnimTab && a.name === anim.name);
+                    return (
+                      <button
+                        key={anim.name}
+                        onClick={() => {
+                          dispatch(setElementAnimation({
+                            elementId: element.id,
+                            animation: {
+                              id: `anim-${Date.now()}`,
+                              name: anim.name as AnimationName,
+                              category: activeAnimTab,
+                              duration: anim.defaultDuration
+                            }
+                          }));
+                          handlePreview(anim.name as AnimationName, activeAnimTab, anim.defaultDuration);
+                        }}
+                        className={isApplied ? 'btn-primary' : 'btn-ghost'}
+                        style={{
+                          flexDirection: 'column',
+                          height: 'auto',
+                          padding: '8px 4px',
+                          gap: 4,
+                          border: isApplied ? 'none' : '1px solid var(--border-color)',
+                          background: isApplied ? 'var(--accent-blue)' : 'var(--bg-secondary)',
+                          fontSize: 10,
+                          borderRadius: 6
+                        }}
+                      >
+                        <span style={{ fontSize: 16 }}>{anim.icon}</span>
+                        <span style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          width: '100%'
+                        }}>
+                          {anim.label}
+                        </span>
+                      </button>
+                    );
+                  })}
             </div>
 
             {/* Applied animations settings */}
@@ -435,8 +435,8 @@ export default function ElementSettingsPanel({ elementId }: { elementId: string 
                       <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-primary)' }}>
                         {ALL_ANIMATIONS.find(a => a.name === anim.name)?.label || anim.name}
                       </span>
-                      <button 
-                        className="btn-icon" 
+                      <button
+                        className="btn-icon"
                         style={{ color: 'var(--accent-red)' }}
                         onClick={() => dispatch(removeElementAnimation({ elementId: element.id, animationId: anim.id }))}
                       >

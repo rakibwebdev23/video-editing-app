@@ -1,9 +1,11 @@
-import { Image as ImageIcon, FileVideo, Trash2 as TrashIcon, Plus } from 'lucide-react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Image as ImageIcon, FileVideo, Trash2 as TrashIcon } from 'lucide-react';
 import { MediaResource } from '../../types/editor.types';
 import { useAppDispatch, useAppSelector } from '../../store/editorStore';
 import { addElement } from '../../store/slices/elementsSlice';
-import { addElementToPage } from '../../store/slices/pagesSlice';
+import { addElementToPage, addPage, updatePageDuration, setActivePage } from '../../store/slices/pagesSlice';
 import { removeResource } from '../../store/slices/uiSlice';
+import { selectElement } from '../../store/slices/selectionSlice';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, LAYOUTS } from '../../constants/layouts';
 import { useState } from 'react';
 
@@ -13,11 +15,11 @@ interface MediaCardProps {
   index: number;
 }
 
-export default function MediaCard({ resource, pageId }: MediaCardProps) {
+export default function MediaCard({ resource, pageId: activePageId }: MediaCardProps) {
   const dispatch = useAppDispatch();
-  const activePage = useAppSelector(s => s.pages.pages.find(p => p.id === pageId));
   const allElements = useAppSelector(s => s.elements.elements);
-  const [showMenu, setShowMenu] = useState(false);
+  const { pages } = useAppSelector(s => s.pages);
+  const [hover, setHover] = useState(false);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -33,51 +35,76 @@ export default function MediaCard({ resource, pageId }: MediaCardProps) {
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!pageId) return;
 
-    // Smart Layout Detection: Find next available zone (0-indexed)
-    const elementsOnPage = allElements.filter(el => el.pageId === pageId);
-    const usedZones = elementsOnPage.map(el => el.zone).filter(z => z !== null) as number[];
-
-    let nextZone: number | null = null;
-    const layoutConfig = LAYOUTS.find(l => l.id === activePage?.layout);
+    const isAudio = resource.type === 'audio';
+    const duration = resource.type === 'video' ? (resource.duration || 5) : (resource.type === 'audio' ? (resource.duration || 10) : 5);
     
-    if (layoutConfig) {
-      for (let i = 0; i < layoutConfig.zones; i++) {
-        if (!usedZones.includes(i)) {
-          nextZone = i;
-          break;
+    // Get all non-audio elements on the active page to check for empty zones
+    const elementsOnActivePage = allElements.filter(el => el.pageId === activePageId && el.type !== 'audio');
+    const currentPage = pages.find(p => p.id === activePageId);
+    const layoutConfig = currentPage ? LAYOUTS.find(l => l.id === currentPage.layout) : null;
+    const maxZones = layoutConfig?.zones || 1;
+
+    let targetPageId = activePageId;
+    let targetZone = 0;
+
+    if (!isAudio) {
+      if (elementsOnActivePage.length >= maxZones) {
+        // Current page is FULL, move to a new page
+        const newPageId = `page-${Date.now()}`;
+        dispatch(addPage({ id: newPageId, duration }));
+        targetPageId = newPageId;
+        dispatch(setActivePage(targetPageId));
+        targetZone = 0;
+      } else {
+        // Current page has ROOM, find next available zone
+        const usedZones = elementsOnActivePage.map(el => el.zone).filter(z => z !== null) as number[];
+        for (let i = 0; i < maxZones; i++) {
+          if (!usedZones.includes(i)) {
+            targetZone = i;
+            break;
+          }
         }
+        
+        // Update page duration: if first element, match exactly. Otherwise, take max.
+        const newPageDuration = elementsOnActivePage.length === 0 ? duration : Math.max(currentPage?.duration || 0, duration);
+        dispatch(updatePageDuration({ pageId: activePageId, duration: newPageDuration }));
+        targetPageId = activePageId;
       }
+    } else {
+      targetPageId = 'global';
     }
 
     const elementId = `el-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const elWidth = 400;
     const elHeight = 300;
 
-    dispatch(addElement({
+    const newEl = {
       id: elementId,
-      pageId,
+      pageId: targetPageId,
       resourceId: resource.id,
-      type: resource.type === 'audio' ? 'audio' : resource.type === 'video' ? 'video' : 'image',
+      type: (resource.type === 'audio' ? 'audio' : resource.type === 'video' ? 'video' : 'image') as any,
       url: resource.url,
       name: resource.name,
       thumbnail: resource.thumbnail,
-      zone: nextZone,
+      zone: targetZone,
       x: (CANVAS_WIDTH - elWidth) / 2,
       y: (CANVAS_HEIGHT - elHeight) / 2,
       width: elWidth,
       height: elHeight,
-      fillMode: 'fill',
+      fillMode: 'fill' as const,
       opacity: 1,
       rotation: 0,
-      freePosition: nextZone === null, 
+      freePosition: false,
       startTime: 0,
-      duration: Math.min(resource.duration || 5, 5), 
+      duration: duration,
       animations: [],
-      zIndex: elementsOnPage.length + 1,
-    }));
-    dispatch(addElementToPage({ pageId, elementId }));
+      zIndex: elementsOnActivePage.length + 1,
+    };
+
+    dispatch(addElement(newEl));
+    dispatch(addElementToPage({ pageId: targetPageId, elementId }));
+    dispatch(selectElement(elementId));
   };
 
   const isAudio = resource.type === 'audio';
@@ -87,57 +114,39 @@ export default function MediaCard({ resource, pageId }: MediaCardProps) {
     <div
       draggable
       onDragStart={handleDragStart}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={handleAdd}
       title={resource.name}
       style={{
-        position: 'relative',
-        borderRadius: 'var(--radius-sm)',
-        overflow: 'hidden',
-        cursor: 'pointer',
+        width: '100%',
         aspectRatio: '1',
         background: 'var(--bg-card)',
-        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--radius-sm)',
+        overflow: 'hidden',
+        position: 'relative',
+        cursor: 'pointer',
+        border: `1px solid ${hover ? 'var(--accent-blue)' : 'var(--border-color)'}`,
         transition: 'all 0.2s ease',
-      }}
-      className="media-card"
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--accent-blue)';
-        (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.02)';
-        setShowMenu(true);
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-color)';
-        (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)';
-        setShowMenu(false);
+        transform: hover ? 'scale(1.02)' : 'none',
+        boxShadow: hover ? '0 4px 12px rgba(0,0,0,0.2)' : 'none',
       }}
     >
-      {/* Action Buttons Overlay */}
-      {showMenu && (
+      {/* Action Overlay */}
+      {hover && (
         <div style={{
-          position: 'absolute', top: 4, left: 4, right: 4,
-          display: 'flex', justifyContent: 'space-between', zIndex: 10,
+          position: 'absolute', top: 4, right: 4, zIndex: 10,
+          display: 'flex', gap: 4,
         }}>
           <button
-            onClick={handleDelete}
+            onClick={(e) => { e.stopPropagation(); handleDelete(e); }}
             style={{
-              background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: 4,
+              background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: 4,
               padding: 4, color: 'white', display: 'flex', cursor: 'pointer'
             }}
             title="Delete media"
           >
             <TrashIcon size={12} color="#ef4444" />
-          </button>
-
-          <button
-            onClick={handleAdd}
-            style={{
-              background: 'var(--accent-blue)', border: 'none', borderRadius: 4,
-              padding: '4px 8px', color: 'white', display: 'flex', alignItems: 'center',
-              gap: 4, fontSize: 10, fontWeight: 600, cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-            }}
-            title="Add to Canvas"
-          >
-            <Plus size={12} /> ADD
           </button>
         </div>
       )}

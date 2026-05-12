@@ -110,8 +110,8 @@ export default function ResourcePanel() {
       </div>
 
       {/* Grid Container */}
-      <div 
-        ref={gridRef} 
+      <div
+        ref={gridRef}
         className="custom-scrollbar"
         style={{
           flex: 1,
@@ -125,11 +125,11 @@ export default function ResourcePanel() {
       >
         {isLoading
           ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="skeleton" style={{ aspectRatio: '1', borderRadius: 12 }} />
-            ))
+            <div key={i} className="skeleton" style={{ aspectRatio: '1', borderRadius: 12 }} />
+          ))
           : filtered.map((resource, idx) => (
-              <MediaCard key={resource.id} resource={resource} pageId={activePageId} index={idx} />
-            ))
+            <MediaCard key={resource.id} resource={resource} pageId={activePageId} index={idx} />
+          ))
         }
         {!isLoading && filtered.length === 0 && (
           <div style={{

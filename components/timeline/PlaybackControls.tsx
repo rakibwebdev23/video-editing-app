@@ -43,7 +43,7 @@ export default function PlaybackControls() {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 10,
-      padding: '5px 0',
+      height: 40, // Fixed height
       background: 'var(--bg-primary)',
       borderBottom: '1px solid var(--border-color)',
       flexShrink: 0,

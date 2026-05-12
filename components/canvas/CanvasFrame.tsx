@@ -17,7 +17,7 @@ export default function CanvasFrame() {
   const activePage = pages.find(p => p.id === activePageId);
   const allElements = useAppSelector(s => s.elements.elements);
   const selectedIds = useAppSelector(s => s.selection.selectedElementIds);
-  const { isPlaying } = useAppSelector(s => s.timeline);
+  const { isPlaying, currentTime } = useAppSelector(s => s.timeline);
   const resources = useAppSelector(s => s.ui.resources);
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +36,26 @@ export default function CanvasFrame() {
     }
   }, [activePageId, activePage]);
 
-  const pageElements = allElements.filter(el => el.pageId === activePage?.id);
+  // Get active page elements
+  const allPageElements = allElements.filter(el => el.pageId === activePage?.id);
+  
+  // Calculate page start time to get relative current time
+  let pageStartTime = 0;
+  if (activePageId) {
+    for (const p of pages) {
+      if (p.id === activePageId) break;
+      pageStartTime += p.duration;
+    }
+  }
+  const relativeTime = currentTime - pageStartTime;
+
+  // Filter elements to only show those active at the current relative time
+  const pageElements = allPageElements.filter(el => {
+    if (el.type === 'audio') return false;
+    // Using a tiny epsilon (0.001) to handle floating point issues at boundaries
+    const isVisible = relativeTime >= (el.startTime - 0.001) && relativeTime < (el.startTime + el.duration - 0.001);
+    return isVisible;
+  });
 
   const handleCanvasClick = (e: MouseEvent) => {
     if (e.target === frameRef.current) {
@@ -156,7 +175,9 @@ export default function CanvasFrame() {
         position: 'absolute',
         width: CANVAS_WIDTH,
         height: CANVAS_HEIGHT,
-        background: 'black', // Base background for transitions
+        top: 0,
+        left: 0,
+        background: 'black',
         overflow: 'hidden',
         userSelect: 'none',
       }}
@@ -177,6 +198,7 @@ export default function CanvasFrame() {
         layout={activePage.layout}
         canvasWidth={CANVAS_WIDTH}
         canvasHeight={CANVAS_HEIGHT}
+        usedZones={pageElements.map(el => el.zone).filter(z => z !== null) as number[]}
         onDrop={(zone, e) => handleDrop(e, zone)}
       />
 
@@ -203,6 +225,7 @@ export default function CanvasFrame() {
                 key={el.id}
                 element={visualElement}
                 isSelected={selectedIds.includes(el.id)}
+                pageStartTime={pageStartTime}
                 onSelect={(e) => {
                   if (e.shiftKey) {
                     dispatch(multiSelectElement(el.id));
